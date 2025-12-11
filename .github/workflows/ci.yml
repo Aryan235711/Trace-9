@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-          cache-dependency-path: 'Trace-Prototype/package-lock.json'
+          cache-dependency-path: './Trace-Prototype/package-lock.json'
 
       - name: Install dependencies
         working-directory: ./Trace-Prototype

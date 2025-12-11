@@ -56,6 +56,7 @@ export const userTargets = pgTable("user_targets", {
   
   // State tracking
   isBaselineComplete: boolean("is_baseline_complete").notNull().default(false),
+  onboardingComplete: boolean("onboarding_complete").notNull().default(false),
   activeInterventionId: varchar("active_intervention_id"),
   
   createdAt: timestamp("created_at").defaultNow(),

@@ -23,11 +23,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
-        working-directory: ./Trace-Prototype
+        working-directory: Trace-Prototype
         run: npm ci
 
       - name: Run tests
-        working-directory: ./Trace-Prototype
+        working-directory: Trace-Prototype
         env:
           CI: true
         run: npm test -- --runInBand

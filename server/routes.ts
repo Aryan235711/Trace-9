@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { processLog } from "./orchestration";
+import { processLog, createInterventionIfNeeded, getDateDaysAgo } from "./orchestration";
 import {
   insertDailyLogSchema,
   insertUserTargetsSchema,
@@ -57,19 +57,83 @@ export async function registerRoutes(
   app.put('/api/targets', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validation = insertUserTargetsSchema.partial().safeParse(req.body);
-      
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: fromZodError(validation.error).toString() 
-        });
+      let validated: any;
+      try {
+        validated = require('./validation').validateUserTargetsPayload(req.body);
+      } catch (err: any) {
+        return res.status(400).json({ message: err.message });
       }
-      
-      const targets = await storage.updateUserTargets(userId, validation.data);
+
+      const targets = await storage.updateUserTargets(userId, validated);
       res.json(targets);
     } catch (error) {
       console.error("Error updating targets:", error);
       res.status(500).json({ message: "Failed to update targets" });
+    }
+  });
+
+  // Onboarding routes (backend-first)
+  app.post('/api/onboarding/start', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Optional initial targets in body
+      let initialTargets: any = {};
+      if (req.body && Object.keys(req.body).length > 0) {
+        try {
+          initialTargets = require('./validation').validateUserTargetsPayload(req.body);
+        } catch (err: any) {
+          return res.status(400).json({ message: err.message });
+        }
+      }
+
+      // Ensure user targets exist (create default if missing)
+      let targets = await storage.getUserTargets(userId);
+      if (!targets) {
+        targets = await storage.createUserTargets({
+          userId,
+          proteinTarget: initialTargets.proteinTarget ?? 100,
+          gutTarget: initialTargets.gutTarget ?? 5,
+          sunTarget: initialTargets.sunTarget ?? 5,
+          exerciseTarget: initialTargets.exerciseTarget ?? 5,
+          sleepBaseline: null,
+          rhrBaseline: null,
+          hrvBaseline: null,
+        } as any);
+      } else {
+        // Apply any provided target updates
+        if (Object.keys(initialTargets).length > 0) {
+          targets = await storage.updateUserTargets(userId, initialTargets);
+        }
+      }
+
+      res.status(201).json(targets);
+    } catch (error: any) {
+      console.error('Error starting onboarding:', error);
+      res.status(500).json({ message: error.message || 'Failed to start onboarding' });
+    }
+  });
+
+  app.get('/api/onboarding/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const targets = await storage.getUserTargets(userId);
+      const today = new Date().toISOString().split('T')[0];
+      const startDate = getDateDaysAgo(today, 7);
+      const logs = await storage.getDailyLogs(userId, startDate, today);
+
+      const status = {
+        hasTargets: !!targets,
+        isBaselineComplete: targets?.isBaselineComplete || false,
+        onboardingComplete: targets?.onboardingComplete || false,
+        daysLogged: logs.length,
+        daysRemaining: Math.max(0, 7 - logs.length),
+      };
+
+      res.json(status);
+    } catch (error: any) {
+      console.error('Error fetching onboarding status:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch onboarding status' });
     }
   });
 
@@ -112,32 +176,27 @@ export async function registerRoutes(
   app.post('/api/logs', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      
+
       // Validate request body (without flags - they'll be computed)
-      const validation = insertDailyLogSchema.omit({
-        sleepFlag: true,
-        rhrFlag: true,
-        hrvFlag: true,
-        proteinFlag: true,
-        gutFlag: true,
-        sunFlag: true,
-        exerciseFlag: true,
-        symptomFlag: true,
-      }).safeParse({ ...req.body, userId });
-      
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: fromZodError(validation.error).toString() 
-        });
+      let validated: any;
+      try {
+        validated = require('./validation').validateDailyLogPayload({ ...req.body, userId });
+      } catch (err: any) {
+        return res.status(400).json({ message: err.message });
       }
-      
+
       // Process the log with orchestration engine
-      const processedLog = await processLog(userId, validation.data);
+      const processedLog = await processLog(userId, validated);
       const log = await storage.createDailyLog(processedLog);
-      
+
+      // Evaluate clusters and create intervention if needed (do not block response)
+      createInterventionIfNeeded(userId, log.date).catch((err) => {
+        console.error('Post-persist orchestration failed:', err);
+      });
+
       res.status(201).json(log);
     } catch (error: any) {
-      console.error("Error creating log:", error);
+      console.error('Error creating log:', error);
       res.status(500).json({ message: error.message || "Failed to create log" });
     }
   });
@@ -154,30 +213,26 @@ export async function registerRoutes(
       }
       
       // Validate request body (without flags)
-      const validation = insertDailyLogSchema.partial().omit({
-        sleepFlag: true,
-        rhrFlag: true,
-        hrvFlag: true,
-        proteinFlag: true,
-        gutFlag: true,
-        sunFlag: true,
-        exerciseFlag: true,
-        symptomFlag: true,
-      }).safeParse(req.body);
-      
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: fromZodError(validation.error).toString() 
-        });
+      let validatedPartial: any;
+      try {
+        validatedPartial = require('./validation').validateDailyLogPayload({ ...existingLog, ...req.body });
+      } catch (err: any) {
+        return res.status(400).json({ message: err.message });
       }
-      
+
       // Process the updated log with orchestration engine
       const processedLog = await processLog(userId, {
         ...existingLog,
-        ...validation.data,
+        ...validatedPartial,
       });
-      
+
       const log = await storage.updateDailyLog(existingLog.id, processedLog);
+
+      // Re-evaluate clusters after update (do not block response)
+      createInterventionIfNeeded(userId, log.date).catch((err) => {
+        console.error('Post-persist orchestration failed (update):', err);
+      });
+
       res.json(log);
     } catch (error: any) {
       console.error("Error updating log:", error);
@@ -230,18 +285,35 @@ export async function registerRoutes(
   app.post('/api/interventions', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validation = insertInterventionSchema.safeParse({ 
-        ...req.body, 
-        userId 
-      });
-      
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: fromZodError(validation.error).toString() 
-        });
+      let validated: any;
+      try {
+        validated = require('./validation').validateInterventionPayload({ ...req.body, userId });
+      } catch (err: any) {
+        return res.status(400).json({ message: err.message });
       }
-      
-      const intervention = await storage.createIntervention(validation.data);
+
+      // Dedupe protection: prevent duplicate hypothesis text and overlapping active interventions
+      const all = await storage.getInterventions(userId);
+      const newStart = new Date(String(validated.startDate));
+      const newEnd = new Date(String(validated.endDate));
+      const normalizedHypothesis = String(validated.hypothesisText || '').trim().toLowerCase();
+
+      for (const ex of all) {
+        const exHyp = String(ex.hypothesisText || '').trim().toLowerCase();
+        if (exHyp && exHyp === normalizedHypothesis) {
+          return res.status(400).json({ message: 'An intervention with the same hypothesis already exists' });
+        }
+
+        // Check overlapping with any active (non-completed) intervention
+        const exStart = new Date(String(ex.startDate));
+        const exEnd = new Date(String(ex.endDate));
+        const overlaps = !(newEnd < exStart || newStart > exEnd);
+        if (overlaps && !ex.result) {
+          return res.status(400).json({ message: 'An overlapping active intervention already exists' });
+        }
+      }
+
+      const intervention = await storage.createIntervention(validated);
       res.status(201).json(intervention);
     } catch (error) {
       console.error("Error creating intervention:", error);
@@ -263,20 +335,59 @@ export async function registerRoutes(
       if (intervention.userId !== userId) {
         return res.status(403).json({ message: "Forbidden" });
       }
-      
-      const validation = insertInterventionSchema.partial().safeParse(req.body);
-      
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: fromZodError(validation.error).toString() 
-        });
+      // Merge existing intervention with incoming fields and validate full payload
+      let validatedFull: any;
+      try {
+        validatedFull = require('./validation').validateInterventionPayload({ ...intervention, ...req.body });
+      } catch (err: any) {
+        return res.status(400).json({ message: err.message });
       }
-      
-      const updated = await storage.updateIntervention(id, validation.data);
+
+      const updated = await storage.updateIntervention(id, validatedFull);
       res.json(updated);
     } catch (error) {
       console.error("Error updating intervention:", error);
       res.status(500).json({ message: "Failed to update intervention" });
+    }
+  });
+
+  // Complete / Check-in for an intervention after its scheduled endDate
+  app.post('/api/interventions/:id/checkin', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+
+      const intervention = await storage.getIntervention(id);
+      if (!intervention) return res.status(404).json({ message: 'Intervention not found' });
+      if (intervention.userId !== userId) return res.status(403).json({ message: 'Forbidden' });
+
+      // Ensure the intervention period has completed
+      const now = new Date();
+      const end = new Date(String(intervention.endDate));
+      if (now < end) {
+        return res.status(400).json({ message: 'Intervention period not yet complete' });
+      }
+
+      // Validate result
+      const { result } = req.body as { result?: string };
+      const allowed = ['Yes', 'No', 'Partial'];
+      if (!result || !allowed.includes(result)) {
+        return res.status(400).json({ message: '`result` must be one of Yes, No, Partial' });
+      }
+
+      // Mark intervention completed and clear user's activeInterventionId if it matches
+      const updated = await storage.updateIntervention(id, { result, completedAt: new Date() } as any);
+
+      // If user's activeInterventionId points to this intervention, clear it
+      const targets = await storage.getUserTargets(userId);
+      if (targets && targets.activeInterventionId === id) {
+        await storage.updateUserTargets(userId, { activeInterventionId: null as any });
+      }
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Error completing intervention:', error);
+      res.status(500).json({ message: error.message || 'Failed to complete intervention' });
     }
   });
 

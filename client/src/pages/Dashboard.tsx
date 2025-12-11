@@ -1,13 +1,14 @@
 import React, { Suspense } from 'react';
-import { useStore, Flag } from '@/lib/store';
-import { format, parseISO } from 'date-fns';
-import { AlertTriangle, CheckCircle2, TrendingUp, Lock, Sparkles, Activity, Moon, Heart, Zap } from 'lucide-react';
+import { format, parseISO, subDays } from 'date-fns';
+import { Lock, Sparkles, Moon, Heart, Zap } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, BarChart, Bar, Legend, ComposedChart, Line } from 'recharts';
+import { useLogs } from '@/hooks/useLogs';
+import { useTargets } from '@/hooks/useTargets';
+import { useActiveIntervention } from '@/hooks/useInterventions';
 
-// Lazy load the Heatmap component
 const Heatmap = React.lazy(() => import('@/components/Heatmap'));
 
-// Re-usable small components for the dashboard
+type Flag = 'GREEN' | 'YELLOW' | 'RED';
 
 const MetricStatus = ({ label, value, flag, unit }: { label: string, value: string | number, flag: Flag, unit?: string }) => {
   const colorClass = 
@@ -26,7 +27,6 @@ const MetricStatus = ({ label, value, flag, unit }: { label: string, value: stri
   );
 };
 
-// Skeleton for Heatmap loading state
 const HeatmapSkeleton = () => (
   <div className="pt-2 bg-card/30 rounded-3xl border border-border/50 p-6 h-[280px] animate-pulse flex flex-col justify-center items-center">
     <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin mb-2" />
@@ -35,34 +35,50 @@ const HeatmapSkeleton = () => (
 );
 
 export default function Dashboard() {
-  const { logs, activeIntervention, targets } = useStore();
-
-  // Get latest log
-  const latestLog = logs[logs.length - 1];
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
   
-  // Chart data preparation
-  const chartData = logs.slice(-7).map(log => ({
+  const { logs, isLoading: logsLoading } = useLogs(thirtyDaysAgo, today);
+  const { targets } = useTargets();
+  const { activeIntervention } = useActiveIntervention();
+
+  if (logsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-600">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (!logs || logs.length === 0) {
+    return (
+      <div className="p-8 text-center font-mono">
+        <p className="text-muted-foreground">NO DATA LOGGED</p>
+        <p className="text-sm text-muted-foreground mt-2">Go to Daily Log to record your first entry</p>
+      </div>
+    );
+  }
+
+  const latestLog = logs[0];
+  const last7Days = logs.slice(0, 7).reverse();
+
+  const chartData = last7Days.map(log => ({
     name: format(parseISO(log.date), 'dd'),
-    sleep: Number(log.rawValues.sleep.toFixed(1)),
-    rhr: Math.round(log.rawValues.rhr),
-    hrv: Math.round(log.rawValues.hrv),
-    protein: Math.round(log.rawValues.protein),
-    symptom: log.rawValues.symptomScore
+    sleep: Number(log.sleep.toFixed(1)),
+    rhr: Math.round(log.rhr),
+    hrv: Math.round(log.hrv),
+    protein: Math.round(log.protein),
+    symptom: log.symptomScore
   }));
 
-  // Radar Data for "Today's Balance"
-  const radarData = latestLog ? [
-    { subject: 'Sleep', A: Number(((latestLog.rawValues.sleep / 9) * 100).toFixed(0)), fullMark: 100 },
-    { subject: 'Protein', A: Number(((latestLog.rawValues.protein / targets.protein) * 100).toFixed(0)), fullMark: 100 },
-    { subject: 'Gut', A: Number(((latestLog.rawValues.gut / 5) * 100).toFixed(0)), fullMark: 100 },
-    { subject: 'Sun', A: Number(((latestLog.rawValues.sun / 5) * 100).toFixed(0)), fullMark: 100 },
-    { subject: 'Exer', A: Number(((latestLog.rawValues.exercise / 5) * 100).toFixed(0)), fullMark: 100 },
-    { subject: 'HRV', A: Number(((latestLog.rawValues.hrv / 100) * 100).toFixed(0)), fullMark: 100 },
-  ] : [];
-  
-  if (!latestLog) return <div className="p-8 text-center font-mono">NO DATA LOGGED</div>;
-
-  const { processedState, rawValues } = latestLog;
+  const radarData = [
+    { subject: 'Sleep', A: Number(((latestLog.sleep / 9) * 100).toFixed(0)), fullMark: 100 },
+    { subject: 'Protein', A: Number(((latestLog.protein / (targets?.proteinTarget || 100)) * 100).toFixed(0)), fullMark: 100 },
+    { subject: 'Gut', A: Number(((latestLog.gut / 5) * 100).toFixed(0)), fullMark: 100 },
+    { subject: 'Sun', A: Number(((latestLog.sun / 5) * 100).toFixed(0)), fullMark: 100 },
+    { subject: 'Exer', A: Number(((latestLog.exercise / 5) * 100).toFixed(0)), fullMark: 100 },
+    { subject: 'HRV', A: Number(((latestLog.hrv / 100) * 100).toFixed(0)), fullMark: 100 },
+  ];
 
   return (
     <div className="p-6 space-y-8 animate-in fade-in duration-500 pb-28">
@@ -99,11 +115,11 @@ export default function Dashboard() {
                   Intervention Active
                 </h3>
                 <p className="text-lg font-medium leading-tight mb-2 text-foreground">
-                  Testing: "{activeIntervention.text}"
+                  Testing: "{activeIntervention.hypothesisText}"
                 </p>
                 <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground bg-background/30 px-2 py-1 rounded-md w-fit">
                   <span>ENDS</span>
-                  <span className="text-foreground">{format(parseISO(activeIntervention.endDate), 'MMM dd')}</span>
+                  <span className="text-foreground">{format(new Date(activeIntervention.endDate), 'MMM dd')}</span>
                 </div>
               </div>
             </div>
@@ -122,7 +138,7 @@ export default function Dashboard() {
                   Insight Available
                 </h3>
                 <p className="text-lg font-medium leading-snug">
-                  Your Sleep Duration is stabilizing. Maintain current protein intake to support RHR recovery.
+                  Track your metrics for 7 days to establish baselines and unlock pattern detection.
                 </p>
               </div>
             </div>
@@ -168,7 +184,7 @@ export default function Dashboard() {
         </div>
 
         {/* CHART 2: Biometric Balance (Radar) */}
-        <div className="h-96 w-full bg-card/40 rounded-3xl border border-border/50 p-6 shadow-sm backdrop-blur-sm relative overflow-hidden flex flex-col">
+        <div className="h-96 w-full bg-card/40 rounded-3xl border border-border/50 p-6 shadow-sm backdrop-blur-sm relative overflow-hidden flex-col">
           <div className="flex justify-between items-center mb-2">
              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                <Zap size={16} className="text-green-400" /> System Balance
@@ -229,13 +245,13 @@ export default function Dashboard() {
           Today's Metrics
         </h2>
         <div className="grid grid-cols-3 gap-3">
-          <MetricStatus label="Sleep" value={rawValues.sleep.toFixed(1)} unit="h" flag={processedState.sleep} />
-          <MetricStatus label="RHR" value={Math.round(rawValues.rhr)} unit="bpm" flag={processedState.rhr} />
-          <MetricStatus label="HRV" value={Math.round(rawValues.hrv)} unit="ms" flag={processedState.hrv} />
+          <MetricStatus label="Sleep" value={latestLog.sleep.toFixed(1)} unit="h" flag={latestLog.sleepFlag as Flag} />
+          <MetricStatus label="RHR" value={Math.round(latestLog.rhr)} unit="bpm" flag={latestLog.rhrFlag as Flag} />
+          <MetricStatus label="HRV" value={Math.round(latestLog.hrv)} unit="ms" flag={latestLog.hrvFlag as Flag} />
           
-          <MetricStatus label="Protein" value={rawValues.protein} unit="g" flag={processedState.protein} />
-          <MetricStatus label="Gut" value={rawValues.gut} unit="/5" flag={processedState.gut} />
-          <MetricStatus label="Symp" value={rawValues.symptomScore} unit="/5" flag={processedState.symptomScore} />
+          <MetricStatus label="Protein" value={latestLog.protein} unit="g" flag={latestLog.proteinFlag as Flag} />
+          <MetricStatus label="Gut" value={latestLog.gut} unit="/5" flag={latestLog.gutFlag as Flag} />
+          <MetricStatus label="Symp" value={latestLog.symptomScore} unit="/5" flag={latestLog.symptomFlag as Flag} />
         </div>
       </div>
 
@@ -247,4 +263,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

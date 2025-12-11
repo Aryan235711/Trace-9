@@ -1,19 +1,20 @@
 import React from 'react';
 import { useStore } from '@/lib/store';
 import { useLocation } from 'wouter';
-import { ShieldAlert, ArrowRight, Target, Sun, Dumbbell, Utensils, Smile } from 'lucide-react';
+import { ShieldAlert, ArrowRight, Utensils, Smile, Sun, Dumbbell } from 'lucide-react';
+import { useTargets } from '@/hooks/useTargets';
 
 export default function Onboarding() {
-  const { acceptDisclaimer, setTargets, hasAcceptedDisclaimer } = useStore();
+  const { acceptDisclaimer, hasAcceptedDisclaimer } = useStore();
+  const { updateTargets, isUpdating } = useTargets();
   const [step, setStep] = React.useState<'disclaimer' | 'goals'>('disclaimer');
   const [location, setLocation] = useLocation();
 
-  // Goals State
   const [targets, setLocalTargets] = React.useState({
-    protein: 100,
-    gut: 5,
-    sun: 5,
-    exercise: 5
+    proteinTarget: 100,
+    gutTarget: 5,
+    sunTarget: 5,
+    exerciseTarget: 5
   });
 
   const handleDisclaimerAccept = () => {
@@ -22,8 +23,11 @@ export default function Onboarding() {
   };
 
   const handleGoalsSubmit = () => {
-    setTargets(targets);
-    setLocation('/');
+    updateTargets(targets, {
+      onSuccess: () => {
+        setLocation('/');
+      }
+    });
   };
 
   if (step === 'disclaimer') {
@@ -85,13 +89,13 @@ export default function Onboarding() {
         <div className="bg-card border border-border/50 p-6 rounded-3xl shadow-sm">
           <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex justify-between items-center">
             <span className="flex items-center gap-2"><Utensils size={14} /> Protein Target</span>
-            <span className="text-white text-lg">{targets.protein}g</span>
+            <span className="text-white text-lg">{targets.proteinTarget}g</span>
           </label>
           <input 
             type="range" 
             min="50" max="250" step="5"
-            value={targets.protein}
-            onChange={(e) => setLocalTargets({...targets, protein: parseInt(e.target.value)})}
+            value={targets.proteinTarget}
+            onChange={(e) => setLocalTargets({...targets, proteinTarget: parseInt(e.target.value)})}
             className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-white"
           />
         </div>
@@ -105,9 +109,9 @@ export default function Onboarding() {
             {[1,2,3,4,5].map(v => (
               <button
                 key={v}
-                onClick={() => setLocalTargets({...targets, gut: v})}
+                onClick={() => setLocalTargets({...targets, gutTarget: v})}
                 className={`flex-1 aspect-square rounded-xl font-bold text-lg transition-all ${
-                  targets.gut === v 
+                  targets.gutTarget === v 
                     ? 'bg-white text-black shadow-lg scale-110' 
                     : 'bg-secondary/30 text-gray-500 hover:bg-secondary'
                 }`}
@@ -131,9 +135,9 @@ export default function Onboarding() {
             ].map((opt) => (
               <button
                 key={opt.val}
-                onClick={() => setLocalTargets({...targets, sun: opt.val})}
+                onClick={() => setLocalTargets({...targets, sunTarget: opt.val})}
                 className={`py-3 rounded-xl text-xs font-bold transition-all ${
-                  targets.sun === opt.val 
+                  targets.sunTarget === opt.val 
                     ? 'bg-white text-black shadow-lg' 
                     : 'bg-secondary/30 text-gray-500 hover:bg-secondary'
                 }`}
@@ -158,9 +162,9 @@ export default function Onboarding() {
             ].map((opt) => (
               <button
                 key={opt.val}
-                onClick={() => setLocalTargets({...targets, exercise: opt.val})}
+                onClick={() => setLocalTargets({...targets, exerciseTarget: opt.val})}
                 className={`py-3 rounded-xl text-[10px] font-bold transition-all ${
-                  targets.exercise === opt.val 
+                  targets.exerciseTarget === opt.val 
                     ? 'bg-white text-black shadow-lg' 
                     : 'bg-secondary/30 text-gray-500 hover:bg-secondary'
                 }`}
@@ -175,10 +179,11 @@ export default function Onboarding() {
 
       <button 
         onClick={handleGoalsSubmit}
-        className="mt-8 w-full bg-white text-black font-bold py-5 rounded-2xl hover:bg-gray-200 hover:scale-[1.02] transition-all shadow-lg"
+        disabled={isUpdating}
+        className="mt-8 w-full bg-white text-black font-bold py-5 rounded-2xl hover:bg-gray-200 hover:scale-[1.02] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
         data-testid="button-complete-setup"
       >
-        INITIALIZE DASHBOARD
+        {isUpdating ? 'INITIALIZING...' : 'INITIALIZE DASHBOARD'}
       </button>
     </div>
   );

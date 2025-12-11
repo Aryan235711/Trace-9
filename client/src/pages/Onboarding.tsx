@@ -1,7 +1,7 @@
 import React from 'react';
 import { useStore } from '@/lib/store';
 import { useLocation } from 'wouter';
-import { ShieldAlert, ArrowRight } from 'lucide-react';
+import { ShieldAlert, ArrowRight, Target, Sun, Dumbbell, Utensils, Smile } from 'lucide-react';
 
 export default function Onboarding() {
   const { acceptDisclaimer, setTargets, hasAcceptedDisclaimer } = useStore();
@@ -29,80 +29,87 @@ export default function Onboarding() {
   if (step === 'disclaimer') {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
-        <div className="mb-8 p-4 border border-red-500/20 rounded-full bg-red-900/10 animate-pulse">
-          <ShieldAlert className="w-12 h-12 text-red-500" />
+        <div className="mb-8 p-6 rounded-full bg-red-500/10 animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.2)]">
+          <ShieldAlert className="w-16 h-16 text-red-500" />
         </div>
         
-        <h1 className="text-3xl font-bold mb-2 tracking-tighter">TRACE-9</h1>
-        <p className="text-muted-foreground font-mono text-xs uppercase tracking-widest mb-8">
+        <h1 className="text-4xl font-bold mb-2 tracking-tighter text-white">TRACE-9</h1>
+        <p className="text-muted-foreground text-xs uppercase tracking-[0.2em] mb-12 font-bold">
           System Initialization
         </p>
 
-        <div className="border border-border p-6 bg-card mb-8 text-left space-y-4 shadow-2xl">
-          <h2 className="font-mono text-sm text-red-500 uppercase font-bold border-b border-red-900/30 pb-2">
+        <div className="bg-card border border-border/50 p-8 rounded-3xl mb-8 text-left space-y-6 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-50" />
+          
+          <h2 className="text-sm text-red-500 uppercase font-bold flex items-center gap-2">
+            <ShieldAlert size={16} />
             Mandatory Disclaimer
           </h2>
-          <p className="text-sm text-gray-300 leading-relaxed">
-            Trace-9 provides highly personalized data analysis and self-experimentation hypotheses based on your inputs.
-          </p>
-          <p className="text-sm text-gray-300 leading-relaxed font-bold">
-            The insights and suggested interventions from this application are NOT a substitute for professional medical advice, diagnosis, or treatment.
-          </p>
-          <p className="text-xs text-gray-500 italic">
-            Always seek the advice of a qualified healthcare provider with any questions you may have regarding a medical condition.
-          </p>
+          <div className="space-y-4 text-sm text-gray-300 leading-relaxed">
+            <p>
+              Trace-9 provides highly personalized data analysis and self-experimentation hypotheses based on your inputs.
+            </p>
+            <p className="font-bold text-white">
+              The insights and suggested interventions from this application are NOT a substitute for professional medical advice, diagnosis, or treatment.
+            </p>
+            <p className="text-xs text-gray-500 italic">
+              Always seek the advice of a qualified healthcare provider with any questions you may have regarding a medical condition.
+            </p>
+          </div>
         </div>
 
         <button 
           onClick={handleDisclaimerAccept}
-          className="w-full bg-white text-black font-mono font-bold py-4 hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 group"
+          className="w-full bg-white text-black font-bold py-5 rounded-2xl hover:bg-gray-200 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 group shadow-lg"
           data-testid="button-accept-disclaimer"
         >
           I ACCEPT & PROCEED
-          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black p-6 max-w-md mx-auto flex flex-col">
-      <h1 className="text-2xl font-bold mb-1 tracking-tighter">TARGET SETUP</h1>
-      <p className="text-muted-foreground font-mono text-xs mb-8">
-        DEFINE YOUR BASELINE METRICS
-      </p>
+    <div className="min-h-screen bg-background p-6 max-w-md mx-auto flex flex-col">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tighter mb-2">Target Setup</h1>
+        <p className="text-muted-foreground text-sm font-medium">
+          Define your baseline metrics for accurate analysis.
+        </p>
+      </div>
 
       <div className="space-y-8 flex-1">
         
         {/* Protein */}
-        <div className="space-y-2">
-          <label className="font-mono text-xs uppercase text-gray-400 flex justify-between">
-            <span>Daily Protein Target</span>
-            <span className="text-white">{targets.protein}g</span>
+        <div className="bg-card border border-border/50 p-6 rounded-3xl shadow-sm">
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex justify-between items-center">
+            <span className="flex items-center gap-2"><Utensils size={14} /> Protein Target</span>
+            <span className="text-white text-lg">{targets.protein}g</span>
           </label>
           <input 
             type="range" 
             min="50" max="250" step="5"
             value={targets.protein}
             onChange={(e) => setLocalTargets({...targets, protein: parseInt(e.target.value)})}
-            className="w-full accent-white h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer"
+            className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-white"
           />
         </div>
 
         {/* Gut Score */}
-        <div className="space-y-2">
-          <label className="font-mono text-xs uppercase text-gray-400">
-            Target Gut Health (1-5)
+        <div className="bg-card border border-border/50 p-6 rounded-3xl shadow-sm">
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+            <Smile size={14} /> Target Gut Health
           </label>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="flex justify-between gap-2">
             {[1,2,3,4,5].map(v => (
               <button
                 key={v}
                 onClick={() => setLocalTargets({...targets, gut: v})}
-                className={`h-12 border font-mono font-bold transition-all ${
+                className={`flex-1 aspect-square rounded-xl font-bold text-lg transition-all ${
                   targets.gut === v 
-                    ? 'bg-white text-black border-white' 
-                    : 'bg-transparent text-gray-500 border-gray-800 hover:border-gray-600'
+                    ? 'bg-white text-black shadow-lg scale-110' 
+                    : 'bg-secondary/30 text-gray-500 hover:bg-secondary'
                 }`}
               >
                 {v}
@@ -112,23 +119,23 @@ export default function Onboarding() {
         </div>
 
         {/* Sun Exposure */}
-        <div className="space-y-2">
-          <label className="font-mono text-xs uppercase text-gray-400">
-            Daily Sun Exposure Goal
+        <div className="bg-card border border-border/50 p-6 rounded-3xl shadow-sm">
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+            <Sun size={14} /> Sun Exposure Goal
           </label>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { val: 1, label: 'NONE' },
-              { val: 3, label: 'PARTIAL' },
-              { val: 5, label: 'FULL' }
+              { val: 1, label: 'None' },
+              { val: 3, label: 'Partial' },
+              { val: 5, label: 'Full' }
             ].map((opt) => (
               <button
                 key={opt.val}
                 onClick={() => setLocalTargets({...targets, sun: opt.val})}
-                className={`h-12 border font-mono text-xs font-bold transition-all ${
+                className={`py-3 rounded-xl text-xs font-bold transition-all ${
                   targets.sun === opt.val 
-                    ? 'bg-white text-black border-white' 
-                    : 'bg-transparent text-gray-500 border-gray-800 hover:border-gray-600'
+                    ? 'bg-white text-black shadow-lg' 
+                    : 'bg-secondary/30 text-gray-500 hover:bg-secondary'
                 }`}
               >
                 {opt.label}
@@ -138,24 +145,24 @@ export default function Onboarding() {
         </div>
 
          {/* Exercise */}
-         <div className="space-y-2">
-          <label className="font-mono text-xs uppercase text-gray-400">
-            Target Intensity
+         <div className="bg-card border border-border/50 p-6 rounded-3xl shadow-sm">
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+            <Dumbbell size={14} /> Target Intensity
           </label>
           <div className="grid grid-cols-4 gap-2">
             {[
-              { val: 1, label: 'REST' },
-              { val: 2, label: 'LITE' },
-              { val: 4, label: 'MED' },
-              { val: 5, label: 'HARD' }
+              { val: 1, label: 'Rest' },
+              { val: 2, label: 'Lite' },
+              { val: 4, label: 'Med' },
+              { val: 5, label: 'Hard' }
             ].map((opt) => (
               <button
                 key={opt.val}
                 onClick={() => setLocalTargets({...targets, exercise: opt.val})}
-                className={`h-12 border font-mono text-[10px] font-bold transition-all ${
+                className={`py-3 rounded-xl text-[10px] font-bold transition-all ${
                   targets.exercise === opt.val 
-                    ? 'bg-white text-black border-white' 
-                    : 'bg-transparent text-gray-500 border-gray-800 hover:border-gray-600'
+                    ? 'bg-white text-black shadow-lg' 
+                    : 'bg-secondary/30 text-gray-500 hover:bg-secondary'
                 }`}
               >
                 {opt.label}
@@ -168,7 +175,7 @@ export default function Onboarding() {
 
       <button 
         onClick={handleGoalsSubmit}
-        className="mt-8 w-full bg-white text-black font-mono font-bold py-4 hover:bg-gray-200 transition-colors"
+        className="mt-8 w-full bg-white text-black font-bold py-5 rounded-2xl hover:bg-gray-200 hover:scale-[1.02] transition-all shadow-lg"
         data-testid="button-complete-setup"
       >
         INITIALIZE DASHBOARD

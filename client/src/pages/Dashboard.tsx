@@ -41,21 +41,21 @@ export default function Dashboard() {
   // Chart data preparation
   const chartData = logs.slice(-7).map(log => ({
     name: format(parseISO(log.date), 'dd'),
-    sleep: log.rawValues.sleep,
-    rhr: log.rawValues.rhr,
-    hrv: log.rawValues.hrv,
-    protein: log.rawValues.protein,
+    sleep: Number(log.rawValues.sleep.toFixed(1)),
+    rhr: Math.round(log.rawValues.rhr),
+    hrv: Math.round(log.rawValues.hrv),
+    protein: Math.round(log.rawValues.protein),
     symptom: log.rawValues.symptomScore
   }));
 
   // Radar Data for "Today's Balance"
   const radarData = latestLog ? [
-    { subject: 'Sleep', A: (latestLog.rawValues.sleep / 9) * 100, fullMark: 100 },
-    { subject: 'Protein', A: (latestLog.rawValues.protein / targets.protein) * 100, fullMark: 100 },
-    { subject: 'Gut', A: (latestLog.rawValues.gut / 5) * 100, fullMark: 100 },
-    { subject: 'Sun', A: (latestLog.rawValues.sun / 5) * 100, fullMark: 100 },
-    { subject: 'Exer', A: (latestLog.rawValues.exercise / 5) * 100, fullMark: 100 },
-    { subject: 'HRV', A: (latestLog.rawValues.hrv / 100) * 100, fullMark: 100 },
+    { subject: 'Sleep', A: Number(((latestLog.rawValues.sleep / 9) * 100).toFixed(0)), fullMark: 100 },
+    { subject: 'Protein', A: Number(((latestLog.rawValues.protein / targets.protein) * 100).toFixed(0)), fullMark: 100 },
+    { subject: 'Gut', A: Number(((latestLog.rawValues.gut / 5) * 100).toFixed(0)), fullMark: 100 },
+    { subject: 'Sun', A: Number(((latestLog.rawValues.sun / 5) * 100).toFixed(0)), fullMark: 100 },
+    { subject: 'Exer', A: Number(((latestLog.rawValues.exercise / 5) * 100).toFixed(0)), fullMark: 100 },
+    { subject: 'HRV', A: Number(((latestLog.rawValues.hrv / 100) * 100).toFixed(0)), fullMark: 100 },
   ] : [];
   
   if (!latestLog) return <div className="p-8 text-center font-mono">NO DATA LOGGED</div>;

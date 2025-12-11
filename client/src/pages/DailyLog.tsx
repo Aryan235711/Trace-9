@@ -225,14 +225,14 @@ export default function DailyLog() {
                 />
              </div>
              
-             <div>
+             <div className="relative z-10">
                <label className="block text-xs font-bold text-muted-foreground mb-2">PRIMARY SYMPTOM (OPTIONAL)</label>
                <input 
                   type="text"
                   placeholder="e.g. Brain Fog, Joint Pain..."
                   value={formData.symptomName}
                   onChange={e => setFormData({...formData, symptomName: e.target.value})}
-                  className="w-full bg-secondary/30 border border-transparent rounded-xl px-4 py-4 text-sm focus:bg-secondary focus:border-primary/20 focus:outline-none placeholder:text-muted-foreground/50 transition-all"
+                  className="w-full bg-secondary border border-transparent rounded-xl px-4 py-4 text-sm focus:border-primary/50 focus:outline-none placeholder:text-muted-foreground/50 transition-all relative z-20"
                />
              </div>
            </div>
@@ -240,7 +240,7 @@ export default function DailyLog() {
 
         <button 
           type="submit"
-          className="w-full bg-primary text-primary-foreground font-bold text-sm py-5 rounded-2xl hover:bg-white/90 hover:scale-[1.01] transition-all flex items-center justify-center gap-3 sticky bottom-20 shadow-[0_0_40px_rgba(255,255,255,0.1)]"
+          className="w-full bg-primary text-primary-foreground font-bold text-sm py-5 rounded-2xl hover:bg-white/90 hover:scale-[1.01] transition-all flex items-center justify-center gap-3 sticky bottom-20 shadow-[0_0_40px_rgba(255,255,255,0.1)] z-30"
         >
           <Save size={20} />
           LOG ENTRY

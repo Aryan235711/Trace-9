@@ -1,8 +1,8 @@
 import React from 'react';
 import { useStore, Flag } from '@/lib/store';
 import { format, parseISO } from 'date-fns';
-import { AlertTriangle, CheckCircle2, TrendingUp, Lock, Sparkles } from 'lucide-react';
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { AlertTriangle, CheckCircle2, TrendingUp, Lock, Sparkles, Activity, Moon, Heart, Zap } from 'lucide-react';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, BarChart, Bar, Legend, ComposedChart, Line } from 'recharts';
 
 // Re-usable small components for the dashboard
 
@@ -13,7 +13,7 @@ const MetricStatus = ({ label, value, flag, unit }: { label: string, value: stri
     'text-flag-green bg-flag-green/5 border-flag-green/20';
   
   return (
-    <div className={`border p-4 flex flex-col justify-between h-28 rounded-2xl backdrop-blur-sm transition-all hover:scale-[1.02] ${colorClass}`}>
+    <div className={`border p-4 flex flex-col justify-between h-28 rounded-2xl backdrop-blur-sm transition-all hover:scale-[1.02] active:scale-[0.98] ${colorClass}`}>
       <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{label}</span>
       <div className="flex items-end gap-1">
         <span className="text-3xl font-bold tracking-tighter">{value}</span>
@@ -33,7 +33,7 @@ const HeatmapCell = ({ flag }: { flag: Flag }) => {
 };
 
 export default function Dashboard() {
-  const { logs, activeIntervention } = useStore();
+  const { logs, activeIntervention, targets } = useStore();
 
   // Get latest log
   const latestLog = logs[logs.length - 1];
@@ -43,8 +43,20 @@ export default function Dashboard() {
     name: format(parseISO(log.date), 'dd'),
     sleep: log.rawValues.sleep,
     rhr: log.rawValues.rhr,
-    hrv: log.rawValues.hrv
+    hrv: log.rawValues.hrv,
+    protein: log.rawValues.protein,
+    symptom: log.rawValues.symptomScore
   }));
+
+  // Radar Data for "Today's Balance"
+  const radarData = latestLog ? [
+    { subject: 'Sleep', A: (latestLog.rawValues.sleep / 9) * 100, fullMark: 100 },
+    { subject: 'Protein', A: (latestLog.rawValues.protein / targets.protein) * 100, fullMark: 100 },
+    { subject: 'Gut', A: (latestLog.rawValues.gut / 5) * 100, fullMark: 100 },
+    { subject: 'Sun', A: (latestLog.rawValues.sun / 5) * 100, fullMark: 100 },
+    { subject: 'Exer', A: (latestLog.rawValues.exercise / 5) * 100, fullMark: 100 },
+    { subject: 'HRV', A: (latestLog.rawValues.hrv / 100) * 100, fullMark: 100 },
+  ] : [];
   
   if (!latestLog) return <div className="p-8 text-center font-mono">NO DATA LOGGED</div>;
 
@@ -116,32 +128,97 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* CHART SECTION */}
-      <div className="h-64 w-full bg-card/50 rounded-3xl border border-border/50 p-4 shadow-sm backdrop-blur-sm relative overflow-hidden">
-        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 ml-2">7-Day Bio-Trends</h2>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="colorSleep" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(220 70% 50%)" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="hsl(220 70% 50%)" stopOpacity={0}/>
-              </linearGradient>
-              <linearGradient id="colorHrv" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(160 60% 45%)" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="hsl(160 60% 45%)" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
-            <XAxis dataKey="name" tick={{fontSize: 10, fill: 'hsl(var(--muted-foreground))'}} axisLine={false} tickLine={false} dy={10} />
-            <YAxis tick={{fontSize: 10, fill: 'hsl(var(--muted-foreground))'}} axisLine={false} tickLine={false} />
-            <Tooltip 
-              contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}
-              itemStyle={{ fontSize: '12px', fontWeight: 500 }}
-            />
-            <Area type="monotone" dataKey="sleep" stroke="hsl(220 70% 50%)" strokeWidth={2} fillOpacity={1} fill="url(#colorSleep)" />
-            <Area type="monotone" dataKey="hrv" stroke="hsl(160 60% 45%)" strokeWidth={2} fillOpacity={1} fill="url(#colorHrv)" />
-          </AreaChart>
-        </ResponsiveContainer>
+      {/* CHARTS GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        {/* CHART 1: Recovery Trends (Area) */}
+        <div className="h-72 w-full bg-card/50 rounded-3xl border border-border/50 p-5 shadow-sm backdrop-blur-sm relative overflow-hidden flex flex-col">
+          <div className="flex justify-between items-center mb-4">
+             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+               <Moon size={14} /> Sleep & HRV Trend
+             </h2>
+          </div>
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorSleep" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(220 70% 50%)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(220 70% 50%)" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorHrv" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(160 60% 45%)" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(160 60% 45%)" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
+                <XAxis dataKey="name" tick={{fontSize: 10, fill: 'hsl(var(--muted-foreground))'}} axisLine={false} tickLine={false} dy={10} />
+                <YAxis tick={{fontSize: 10, fill: 'hsl(var(--muted-foreground))'}} axisLine={false} tickLine={false} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
+                  itemStyle={{ fontSize: '12px', fontWeight: 500 }}
+                />
+                <Area type="monotone" dataKey="sleep" stackId="1" stroke="hsl(220 70% 50%)" strokeWidth={2} fillOpacity={1} fill="url(#colorSleep)" />
+                <Area type="monotone" dataKey="hrv" stackId="2" stroke="hsl(160 60% 45%)" strokeWidth={2} fillOpacity={1} fill="url(#colorHrv)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* CHART 2: Biometric Balance (Radar) - VISUAL IMPACT */}
+        <div className="h-72 w-full bg-card/50 rounded-3xl border border-border/50 p-5 shadow-sm backdrop-blur-sm relative overflow-hidden flex flex-col">
+          <div className="flex justify-between items-center mb-2">
+             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+               <Zap size={14} /> System Balance
+             </h2>
+          </div>
+          <div className="flex-1 min-h-0">
+             <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 600 }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                  <Radar
+                    name="Performance"
+                    dataKey="A"
+                    stroke="hsl(var(--color-flag-green))"
+                    strokeWidth={2}
+                    fill="hsl(var(--color-flag-green))"
+                    fillOpacity={0.3}
+                  />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
+                    itemStyle={{ fontSize: '12px' }}
+                  />
+                </RadarChart>
+             </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* CHART 3: Recovery vs Strain (Composed) - ADVANCED */}
+        <div className="h-64 w-full md:col-span-2 bg-card/50 rounded-3xl border border-border/50 p-5 shadow-sm backdrop-blur-sm relative overflow-hidden flex flex-col">
+          <div className="flex justify-between items-center mb-4">
+             <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+               <Heart size={14} /> Cardiovascular Load (RHR vs HRV)
+             </h2>
+          </div>
+          <div className="flex-1 min-h-0">
+             <ResponsiveContainer width="100%" height="100%">
+               <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis dataKey="name" tick={{fontSize: 10, fill: 'hsl(var(--muted-foreground))'}} axisLine={false} tickLine={false} dy={10} />
+                  <YAxis yAxisId="left" tick={{fontSize: 10, fill: 'hsl(var(--muted-foreground))'}} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10, fill: 'hsl(var(--muted-foreground))'}} axisLine={false} tickLine={false} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
+                  />
+                  <Bar yAxisId="left" dataKey="rhr" barSize={20} fill="hsl(var(--color-flag-red))" opacity={0.5} radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="right" type="monotone" dataKey="hrv" stroke="hsl(var(--color-flag-green))" strokeWidth={3} dot={{r: 4, fill: 'hsl(var(--background))', strokeWidth: 2}} />
+               </ComposedChart>
+             </ResponsiveContainer>
+          </div>
+        </div>
+
       </div>
 
       {/* LATEST METRICS GRID */}
@@ -215,3 +292,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import { type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { processLog } from "./orchestration";
@@ -10,7 +10,10 @@ import {
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express
+): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
@@ -277,6 +280,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
   return httpServer;
 }

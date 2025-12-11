@@ -4,40 +4,40 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --radius-sm: 0px;
-  --radius-md: 2px;
-  --radius-lg: 4px;
-  --radius-xl: 8px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
   
-  --color-background: hsl(0 0% 4%);     /* #0a0a0a */
-  --color-foreground: hsl(0 0% 98%);    /* #fafafa */
+  --color-background: hsl(240 10% 4%);     /* #09090b - Slightly cooler black */
+  --color-foreground: hsl(0 0% 98%);
   
-  --color-card: hsl(0 0% 7%);           /* #121212 */
+  --color-card: hsl(240 10% 8%);           /* #121215 */
   --color-card-foreground: hsl(0 0% 98%);
   
-  --color-popover: hsl(0 0% 7%);
+  --color-popover: hsl(240 10% 8%);
   --color-popover-foreground: hsl(0 0% 98%);
   
   --color-primary: hsl(0 0% 98%);
-  --color-primary-foreground: hsl(0 0% 4%);
+  --color-primary-foreground: hsl(240 10% 4%);
   
-  --color-secondary: hsl(0 0% 15%);
+  --color-secondary: hsl(240 5% 15%);
   --color-secondary-foreground: hsl(0 0% 98%);
   
-  --color-muted: hsl(0 0% 15%);
-  --color-muted-foreground: hsl(0 0% 65%);
+  --color-muted: hsl(240 5% 15%);
+  --color-muted-foreground: hsl(240 5% 65%);
   
-  --color-accent: hsl(0 0% 15%);
+  --color-accent: hsl(240 5% 15%);
   --color-accent-foreground: hsl(0 0% 98%);
   
   --color-destructive: hsl(0 63% 31%);
   --color-destructive-foreground: hsl(0 0% 98%);
   
-  --color-border: hsl(0 0% 20%);
-  --color-input: hsl(0 0% 20%);
-  --color-ring: hsl(0 0% 83%);
+  --color-border: hsl(240 5% 20%);
+  --color-input: hsl(240 5% 20%);
+  --color-ring: hsl(240 5% 83%);
   
-  /* Trace-9 Specific Flag Colors - High Saturation */
+  /* Trace-9 Specific Flag Colors - Vibrant */
   --color-flag-red: hsl(0 84% 60%);      /* #ef4444 */
   --color-flag-yellow: hsl(45 93% 47%);  /* #eab308 */
   --color-flag-green: hsl(142 71% 45%);  /* #22c55e */
@@ -48,7 +48,7 @@
   --color-chart-4: hsl(280 65% 60%);
   --color-chart-5: hsl(340 75% 55%);
   
-  --font-sans: 'Inter', sans-serif;
+  --font-sans: 'DM Sans', 'Inter', sans-serif; /* Friendlier font */
   --font-mono: 'JetBrains Mono', monospace;
 }
 
@@ -61,13 +61,13 @@
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
   }
   
-  /* Monochromatic Aesthetic Mandate */
+  /* Soft Modern Aesthetic */
   .mono-card {
-    @apply bg-card border border-border rounded-none;
+    @apply bg-card border border-border/50 rounded-2xl shadow-sm transition-all;
   }
   
   .mono-input {
-    @apply bg-black border border-border rounded-none focus:ring-1 focus:ring-white transition-all;
+    @apply bg-secondary/50 border border-transparent rounded-xl focus:ring-2 focus:ring-white/20 focus:bg-secondary transition-all;
   }
 }
 
@@ -81,6 +81,7 @@
 }
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--muted));
+  border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));

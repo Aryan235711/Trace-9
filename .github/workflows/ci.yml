@@ -17,17 +17,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: List repository structure
+        run: ls -la
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
-        working-directory: Trace-Prototype
         run: npm ci
 
       - name: Run tests
-        working-directory: Trace-Prototype
         env:
           CI: true
         run: npm test -- --runInBand

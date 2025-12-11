@@ -41,6 +41,7 @@ export async function processLog(
       rhrBaseline,
       hrvBaseline,
       isBaselineComplete: true,
+      onboardingComplete: true,
     });
     
     // Update local targets reference
@@ -48,6 +49,7 @@ export async function processLog(
     targets.rhrBaseline = rhrBaseline;
     targets.hrvBaseline = hrvBaseline;
     targets.isBaselineComplete = true;
+    targets.onboardingComplete = true;
   }
   
   // Apply universal flagging
@@ -58,6 +60,67 @@ export async function processLog(
     ...logData,
     ...flags,
   };
+}
+
+/**
+ * After a log has been persisted, evaluate recent logs for clusters and
+ * create an Intervention if Mode 1 (negative) is detected and no active
+ * intervention lock exists for the user.
+ */
+export async function createInterventionIfNeeded(userId: string, date: string) {
+  // Respect existing intervention lock
+  const targets = await storage.getUserTargets(userId);
+  if (!targets) return;
+  if (targets.activeInterventionId) return; // lock present, do not create
+
+  // Detect clusters across last 3 days
+  const result = await detectClusters(userId, 3);
+
+  if (result.mode === 'negative' && result.hypothesis) {
+    // Create intervention for 7 days starting on `date`
+    try {
+      const start = new Date(date);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 7);
+
+      // Dedupe protection: check for duplicate hypothesis or overlapping active interventions
+      const existing = await storage.getInterventions(userId);
+      const normalizedHyp = String(result.hypothesis).trim().toLowerCase();
+      let skipCreate = false;
+      for (const ex of existing) {
+        const exHyp = String(ex.hypothesisText || '').trim().toLowerCase();
+        if (exHyp && exHyp === normalizedHyp) {
+          skipCreate = true;
+          break;
+        }
+        const exStart = new Date(String(ex.startDate));
+        const exEnd = new Date(String(ex.endDate));
+        const overlaps = !(end < exStart || start > exEnd);
+        if (overlaps && !ex.result) {
+          skipCreate = true;
+          break;
+        }
+      }
+
+      if (skipCreate) {
+        return; // do not create duplicate/overlapping intervention
+      }
+
+      const intervention = await storage.createIntervention({
+        userId,
+        hypothesisText: result.hypothesis,
+        startDate: start,
+        endDate: end,
+      });
+
+      // Update user targets to set activeInterventionId lock
+      await storage.updateUserTargets(userId, {
+        activeInterventionId: intervention.id,
+      });
+    } catch (err) {
+      console.error('Failed to create intervention:', err);
+    }
+  }
 }
 
 /**
@@ -124,22 +187,30 @@ function applyUniversalFlagging(
  * - RHR: Lower is better (GREEN: <=baseline, YELLOW: 101-110%, RED: >110%)
  */
 function flagWearable(value: number, baseline: number | null, type: 'sleep' | 'rhr' | 'hrv'): Flag {
-  if (baseline === null || baseline === undefined) {
-    return "YELLOW"; // No baseline yet, conservative flagging
+  if (baseline === null || baseline === undefined || baseline === 0) {
+    return "YELLOW"; // No baseline or invalid baseline (0), conservative flagging
   }
-  
-  const percentage = (value / baseline) * 100;
-  
+
+  // Use deviation thresholds per SoT: 15% => RED, 8% => YELLOW
+  // Direction matters: for RHR lower is better; for sleep/hrv higher is better.
+  const deviationThresholdRed = 0.15;
+  const deviationThresholdYellow = 0.08;
+  const EPS = 1e-9;
+
   if (type === 'rhr') {
-    // RHR: Lower is better
-    if (percentage <= 100) return "GREEN";
-    if (percentage <= 110) return "YELLOW";
-    return "RED";
+    // RHR: lower is better. Only deviations above baseline (higher RHR) are bad.
+    if (value <= baseline) return "GREEN";
+    const deviation = (value - baseline) / baseline; // positive when worse
+    if (deviation + EPS >= deviationThresholdRed) return "RED";
+    if (deviation + EPS >= deviationThresholdYellow) return "YELLOW";
+    return "GREEN";
   } else {
-    // Sleep & HRV: Higher is better
-    if (percentage >= 100) return "GREEN";
-    if (percentage >= 90) return "YELLOW";
-    return "RED";
+    // Sleep & HRV: higher is better. Only deviations below baseline are bad.
+    if (value >= baseline) return "GREEN";
+    const deviation = (baseline - value) / baseline; // positive when worse
+    if (deviation + EPS >= deviationThresholdRed) return "RED";
+    if (deviation + EPS >= deviationThresholdYellow) return "YELLOW";
+    return "GREEN";
   }
 }
 
@@ -150,8 +221,12 @@ function flagWearable(value: number, baseline: number | null, type: 'sleep' | 'r
  * - RED: <80% of target
  */
 function flagManual(value: number, target: number): Flag {
+  if (!target || target === 0) {
+    return "YELLOW"; // No meaningful target, conservative
+  }
+
   const percentage = (value / target) * 100;
-  
+
   if (percentage >= 100) return "GREEN";
   if (percentage >= 80) return "YELLOW";
   return "RED";
@@ -181,43 +256,93 @@ export async function detectClusters(
   clusters: string[][];
   hypothesis: string | null;
 }> {
+  // Fetch up to the last 7 days (we need 3-day, 5-day and 7-day windows)
   const endDate = new Date().toISOString().split('T')[0];
-  const startDate = getDateDaysAgo(endDate, days);
-  const logs = await storage.getDailyLogs(userId, startDate, endDate);
-  
-  if (logs.length < days) {
+  const startDate = getDateDaysAgo(endDate, 7);
+  const logsRaw = await storage.getDailyLogs(userId, startDate, endDate);
+
+  // Ensure chronological order (oldest -> newest)
+  const logs = logsRaw.slice().sort((a: any, b: any) => a.date.localeCompare(b.date));
+
+  if (logs.length === 0) {
     return { mode: null, clusters: [], hypothesis: null };
   }
-  
-  // Check for 3-Day Trend Rule (RED symptoms for 3 consecutive days)
-  const symptomReds = logs.filter(l => l.symptomFlag === 'RED').length;
-  
-  if (symptomReds >= 3) {
-    // Negative Cluster Alert
-    const clusters = findNegativeClusters(logs);
-    const hypothesis = generateNegativeHypothesis(clusters);
-    return { mode: 'negative', clusters, hypothesis };
-  }
-  
-  // Check for Positive Consistency (GREEN symptoms for 3+ days)
-  const symptomGreens = logs.filter(l => l.symptomFlag === 'GREEN').length;
-  
-  if (symptomGreens >= 3) {
-    // Positive Consistency
-    const clusters = findPositiveClusters(logs);
-    const hypothesis = generatePositiveHypothesis(clusters);
-    return { mode: 'positive', clusters, hypothesis };
-  }
-  
-  // Check for Stagnation (YELLOW for 5+ days, no improvement)
-  if (logs.length >= 5) {
-    const stagnant = checkStagnation(logs);
-    if (stagnant) {
-      const hypothesis = "Your metrics have been stagnant. Consider adjusting your approach.";
-      return { mode: 'stagnation', clusters: [], hypothesis };
+
+  const metrics = ['sleep', 'rhr', 'hrv', 'protein', 'gut', 'sun', 'exercise'];
+
+  // ----- Mode 1 (Negative Cluster Alert) -----
+  // Required: For the most recent 3 days: symptomScore >=4 AND >=2 non-symptom RED/YELLOW flags
+  if (logs.length >= 3) {
+    const last3 = logs.slice(-3);
+
+    const mode1AllMatch = last3.every((log: any) => {
+      const hasHighSymptoms = (log.symptomScore ?? 0) >= 4;
+      const redYellowCount = metrics.filter((m) => {
+        const flagName = `${m}Flag`;
+        return (log as any)[flagName] === 'RED' || (log as any)[flagName] === 'YELLOW';
+      }).length;
+      return hasHighSymptoms && redYellowCount >= 2;
+    });
+
+    if (mode1AllMatch) {
+      const clusters = findNegativeClusters(last3);
+      const hypothesis = generateNegativeHypothesis(clusters);
+      return { mode: 'negative', clusters, hypothesis };
     }
   }
-  
+
+  // ----- Mode 2 (Positive Consistency - 7-day check) -----
+  // Required: 7-day window: >=80% of non-symptom flags are GREEN AND symptom avg <= 2
+  if (logs.length >= 7) {
+    const last7 = logs.slice(-7);
+    const totalFlags = last7.length * metrics.length;
+    let greenCount = 0;
+    let symptomSum = 0;
+
+    for (const log of last7) {
+      symptomSum += (log.symptomScore ?? 0);
+      for (const m of metrics) {
+        if ((log as any)[`${m}Flag`] === 'GREEN') greenCount++;
+      }
+    }
+
+    const greenRatio = greenCount / totalFlags;
+    const symptomAvg = symptomSum / last7.length;
+
+    if (greenRatio >= 0.8 && symptomAvg <= 2) {
+      const clusters = findPositiveClusters(last7);
+      const hypothesis = generatePositiveHypothesis(clusters);
+      return { mode: 'positive', clusters, hypothesis };
+    }
+  }
+
+  // ----- Mode 3 (Stagnation) -----
+  // Required: 5 consecutive days where 70% of non-symptom metric flags maintained the exact same state
+  if (logs.length >= 5) {
+    // Sliding windows of length 5 within available logs (prefer most recent windows)
+    for (let i = Math.max(0, logs.length - 5); i >= 0; i--) {
+      const window = logs.slice(i, i + 5);
+      if (window.length < 5) continue;
+
+      // Count metrics that remained identical across the 5-day window
+      let identicalMetrics = 0;
+      for (const m of metrics) {
+        const first = (window[0] as any)[`${m}Flag`];
+        const allSame = window.every((d: any) => d[`${m}Flag`] === first);
+        if (allSame) identicalMetrics++;
+      }
+
+      const identicalFlags = identicalMetrics * window.length; // each identical metric contributes 5 identical flags
+      const totalFlags = metrics.length * window.length;
+      const identicalRatio = identicalFlags / totalFlags;
+
+      if (identicalRatio >= 0.7) {
+        const hypothesis = "Your metrics have been stagnant. Consider adjusting your approach.";
+        return { mode: 'stagnation', clusters: [], hypothesis };
+      }
+    }
+  }
+
   return { mode: null, clusters: [], hypothesis: null };
 }
 
@@ -336,7 +461,7 @@ function calculateAverage(values: number[]): number {
 /**
  * Helper: Get date N days ago in YYYY-MM-DD format
  */
-function getDateDaysAgo(fromDate: string, days: number): string {
+export function getDateDaysAgo(fromDate: string, days: number): string {
   const date = new Date(fromDate);
   date.setDate(date.getDate() - days);
   return date.toISOString().split('T')[0];

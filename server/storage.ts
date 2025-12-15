@@ -42,150 +42,208 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private async timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
+    if (process.env.PROFILING !== '1') {
+      return fn();
+    }
+    const start = Date.now();
+    try {
+      const res = await fn();
+      const duration = Date.now() - start;
+      console.log(`[db] ${label} took ${duration}ms`);
+      return res;
+    } catch (err) {
+      const duration = Date.now() - start;
+      console.log(`[db] ${label} failed after ${duration}ms`);
+      throw err;
+    }
+  }
   // User operations (Required for Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    return this.timed('getUser', async () => {
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      return user;
+    });
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
+    return this.timed('upsertUser', async () => {
+      const toInsert: UpsertUser = {
+        ...userData,
+        plan: userData.plan ?? 'free',
+      };
+
+      const updates: Partial<UpsertUser> & { updatedAt: Date } = {
+        updatedAt: new Date(),
+      };
+
+      if (userData.email !== undefined) updates.email = userData.email;
+      if (userData.firstName !== undefined) updates.firstName = userData.firstName;
+      if (userData.lastName !== undefined) updates.lastName = userData.lastName;
+      if (userData.profileImageUrl !== undefined) updates.profileImageUrl = userData.profileImageUrl;
+      if (userData.plan !== undefined) updates.plan = userData.plan;
+
+      const [user] = await db
+        .insert(users)
+        .values(toInsert)
+        .onConflictDoUpdate({
+          target: users.id,
+          set: updates,
+        })
+        .returning();
+      return user;
+    });
   }
 
   // User Targets operations
   async getUserTargets(userId: string): Promise<UserTargets | undefined> {
-    const [targets] = await db
-      .select()
-      .from(userTargets)
-      .where(eq(userTargets.userId, userId));
-    return targets;
+    return this.timed('getUserTargets', async () => {
+      const [targets] = await db
+        .select()
+        .from(userTargets)
+        .where(eq(userTargets.userId, userId));
+      return targets;
+    });
   }
 
   async createUserTargets(targetsData: InsertUserTargets): Promise<UserTargets> {
-    const [targets] = await db
-      .insert(userTargets)
-      .values(targetsData)
-      .returning();
-    return targets;
+    return this.timed('createUserTargets', async () => {
+      const [targets] = await db
+        .insert(userTargets)
+        .values(targetsData)
+        .returning();
+      return targets;
+    });
   }
 
   async updateUserTargets(userId: string, targetsData: Partial<InsertUserTargets>): Promise<UserTargets> {
-    const [targets] = await db
-      .update(userTargets)
-      .set({
-        ...targetsData,
-        updatedAt: new Date(),
-      })
-      .where(eq(userTargets.userId, userId))
-      .returning();
-    return targets;
+    return this.timed('updateUserTargets', async () => {
+      const [targets] = await db
+        .update(userTargets)
+        .set({
+          ...targetsData,
+          updatedAt: new Date(),
+        })
+        .where(eq(userTargets.userId, userId))
+        .returning();
+      return targets;
+    });
   }
 
   // Daily Logs operations
   async getDailyLog(userId: string, date: string): Promise<DailyLog | undefined> {
-    const [log] = await db
-      .select()
-      .from(dailyLogs)
-      .where(and(eq(dailyLogs.userId, userId), eq(dailyLogs.date, date)));
-    return log;
+    return this.timed('getDailyLog', async () => {
+      const [log] = await db
+        .select()
+        .from(dailyLogs)
+        .where(and(eq(dailyLogs.userId, userId), eq(dailyLogs.date, date)));
+      return log;
+    });
   }
 
   async getDailyLogs(userId: string, startDate?: string, endDate?: string): Promise<DailyLog[]> {
-    let query = db.select().from(dailyLogs).where(eq(dailyLogs.userId, userId));
-    
-    if (startDate && endDate) {
-      query = query.where(
-        and(
-          eq(dailyLogs.userId, userId),
-          gte(dailyLogs.date, startDate),
-          lte(dailyLogs.date, endDate)
-        )
-      );
-    }
-    
-    const logs = await query.orderBy(desc(dailyLogs.date));
-    return logs;
+    return this.timed('getDailyLogs', async () => {
+      const whereClause = startDate && endDate
+        ? and(
+            eq(dailyLogs.userId, userId),
+            gte(dailyLogs.date, startDate),
+            lte(dailyLogs.date, endDate)
+          )
+        : eq(dailyLogs.userId, userId);
+
+      const logs = await db
+        .select()
+        .from(dailyLogs)
+        .where(whereClause)
+        .orderBy(desc(dailyLogs.date));
+      return logs;
+    });
   }
 
   async createDailyLog(logData: InsertDailyLog): Promise<DailyLog> {
-    const [log] = await db
-      .insert(dailyLogs)
-      .values(logData)
-      .returning();
-    return log;
+    return this.timed('createDailyLog', async () => {
+      const [log] = await db
+        .insert(dailyLogs)
+        .values(logData)
+        .returning();
+      return log;
+    });
   }
 
   async updateDailyLog(id: string, logData: Partial<InsertDailyLog>): Promise<DailyLog> {
-    const [log] = await db
-      .update(dailyLogs)
-      .set(logData)
-      .where(eq(dailyLogs.id, id))
-      .returning();
-    return log;
+    return this.timed('updateDailyLog', async () => {
+      const [log] = await db
+        .update(dailyLogs)
+        .set(logData)
+        .where(eq(dailyLogs.id, id))
+        .returning();
+      return log;
+    });
   }
 
   async deleteDailyLog(id: string): Promise<void> {
-    await db.delete(dailyLogs).where(eq(dailyLogs.id, id));
+    return this.timed('deleteDailyLog', async () => {
+      await db.delete(dailyLogs).where(eq(dailyLogs.id, id));
+    });
   }
 
   // Interventions operations
   async getIntervention(id: string): Promise<Intervention | undefined> {
-    const [intervention] = await db
-      .select()
-      .from(interventions)
-      .where(eq(interventions.id, id));
-    return intervention;
+    return this.timed('getIntervention', async () => {
+      const [intervention] = await db
+        .select()
+        .from(interventions)
+        .where(eq(interventions.id, id));
+      return intervention;
+    });
   }
 
   async getInterventions(userId: string): Promise<Intervention[]> {
-    const results = await db
-      .select()
-      .from(interventions)
-      .where(eq(interventions.userId, userId))
-      .orderBy(desc(interventions.createdAt));
-    return results;
+    return this.timed('getInterventions', async () => {
+      const results = await db
+        .select()
+        .from(interventions)
+        .where(eq(interventions.userId, userId))
+        .orderBy(desc(interventions.createdAt));
+      return results;
+    });
   }
 
   async getActiveIntervention(userId: string): Promise<Intervention | undefined> {
-    const [intervention] = await db
-      .select()
-      .from(interventions)
-      .where(
-        and(
-          eq(interventions.userId, userId),
-          eq(interventions.result, null as any)
+    return this.timed('getActiveIntervention', async () => {
+      const [intervention] = await db
+        .select()
+        .from(interventions)
+        .where(
+          and(
+            eq(interventions.userId, userId),
+            eq(interventions.result, null as any)
+          )
         )
-      )
-      .orderBy(desc(interventions.createdAt));
-    return intervention;
+        .orderBy(desc(interventions.createdAt));
+      return intervention;
+    });
   }
 
   async createIntervention(interventionData: InsertIntervention): Promise<Intervention> {
-    const [intervention] = await db
-      .insert(interventions)
-      .values(interventionData)
-      .returning();
-    return intervention;
+    return this.timed('createIntervention', async () => {
+      const [intervention] = await db
+        .insert(interventions)
+        .values(interventionData)
+        .returning();
+      return intervention;
+    });
   }
 
   async updateIntervention(id: string, interventionData: Partial<InsertIntervention>): Promise<Intervention> {
-    const [intervention] = await db
-      .update(interventions)
-      .set(interventionData)
-      .where(eq(interventions.id, id))
-      .returning();
-    return intervention;
+    return this.timed('updateIntervention', async () => {
+      const [intervention] = await db
+        .update(interventions)
+        .set(interventionData)
+        .where(eq(interventions.id, id))
+        .returning();
+      return intervention;
+    });
   }
 }
 

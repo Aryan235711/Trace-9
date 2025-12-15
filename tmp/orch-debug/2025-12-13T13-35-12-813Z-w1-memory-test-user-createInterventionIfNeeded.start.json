@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-12-13T13:35:12.813Z",
+  "event": "createInterventionIfNeeded.start",
+  "userId": "memory-test-user",
+  "payload": {
+    "date": "2024-01-03"
+  }
+}

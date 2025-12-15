@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-12-13T13:36:35.961Z",
+  "event": "detectClusters.fetched",
+  "userId": "rate-limit-test-user",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-01-28",
+    "startDate": "2024-01-21",
+    "fetchedCount": 8
+  }
+}

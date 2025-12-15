@@ -1,0 +1,9 @@
+{
+  "timestamp": "2025-12-13T13:35:45.729Z",
+  "event": "route.logs.post.persisted",
+  "userId": "memory-test-user",
+  "payload": {
+    "date": "2024-11-25",
+    "id": "log-1765632945728-0.9278909670800526"
+  }
+}

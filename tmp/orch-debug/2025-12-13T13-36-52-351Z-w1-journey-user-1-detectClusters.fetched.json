@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-12-13T13:36:52.351Z",
+  "event": "detectClusters.fetched",
+  "userId": "journey-user-1",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-01-01",
+    "startDate": "2023-12-25",
+    "fetchedCount": 1
+  }
+}

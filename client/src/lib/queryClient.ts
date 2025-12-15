@@ -1,5 +1,13 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+function getStatusCodeFromError(err: unknown): number | undefined {
+  const message = err instanceof Error ? err.message : String(err);
+  const match = /^([0-9]{3}):/.exec(message);
+  if (!match) return undefined;
+  const code = Number(match[1]);
+  return Number.isFinite(code) ? code : undefined;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -47,8 +55,16 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      refetchOnReconnect: true,
+      // Avoid indefinite cache growth + allow background refresh on remount.
+      staleTime: 30_000,
+      gcTime: 10 * 60_000,
+      retry: (failureCount, error) => {
+        const status = getStatusCodeFromError(error);
+        // Don't retry client errors (incl. auth).
+        if (status && status < 500) return false;
+        return failureCount < 2;
+      },
     },
     mutations: {
       retry: false,

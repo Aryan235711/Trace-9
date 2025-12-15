@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-12-13T13:33:30.449Z",
+  "event": "createInterventionIfNeeded.detectClusters",
+  "userId": "load-test-user",
+  "payload": {
+    "date": "2024-03-05",
+    "result": {
+      "mode": "negative",
+      "clusters": [
+        [
+          "symptom",
+          "sleep",
+          "protein",
+          "gut",
+          "sun",
+          "exercise"
+        ]
+      ],
+      "hypothesis": "High symptoms with sleep, gut, sun, exercise issues detected. Consider improving sleep habits."
+    }
+  }
+}

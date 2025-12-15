@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-12-13T13:35:01.851Z",
+  "event": "route.logs.post.afterCreateInterventionIfNeeded",
+  "userId": "concurrent-user-42",
+  "payload": {
+    "date": "2024-01-06"
+  }
+}

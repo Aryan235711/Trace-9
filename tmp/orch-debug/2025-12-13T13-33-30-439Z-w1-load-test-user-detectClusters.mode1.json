@@ -1,0 +1,38 @@
+{
+  "timestamp": "2025-12-13T13:33:30.439Z",
+  "event": "detectClusters.mode1",
+  "userId": "load-test-user",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-03-05",
+    "startDate": "2024-02-27",
+    "last3": [
+      {
+        "date": "2024-03-03",
+        "symptomScore": 5
+      },
+      {
+        "date": "2024-03-04",
+        "symptomScore": 4
+      },
+      {
+        "date": "2024-03-05",
+        "symptomScore": 4
+      }
+    ],
+    "result": {
+      "mode": "negative",
+      "clusters": [
+        [
+          "symptom",
+          "sleep",
+          "protein",
+          "gut",
+          "sun",
+          "exercise"
+        ]
+      ],
+      "hypothesis": "High symptoms with sleep, gut, sun, exercise issues detected. Consider improving sleep habits."
+    }
+  }
+}

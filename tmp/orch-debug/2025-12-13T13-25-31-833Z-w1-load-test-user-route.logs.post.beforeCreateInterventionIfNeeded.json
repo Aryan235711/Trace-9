@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-12-13T13:25:31.833Z",
+  "event": "route.logs.post.beforeCreateInterventionIfNeeded",
+  "userId": "load-test-user",
+  "payload": {
+    "date": "2024-02-29"
+  }
+}

@@ -1,0 +1,16 @@
+﻿{
+    "name":  "app",
+    "pid":  13856,
+    "startedAt":  "2025-12-14T16:39:02.3574284+05:30",
+    "workingDirectory":  "C:\\Users\\pc\\Desktop\\Trace-9\\Trace-Prototype",
+    "command":  "C:\\Program Files\\nodejs\\node.exe",
+    "args":  [
+                 "dist/index.cjs"
+             ],
+    "startCommand":  "node",
+    "startArgs":  [
+                      "dist/index.cjs"
+                  ],
+    "logPath":  "C:\\Users\\pc\\Desktop\\Trace-9\\Trace-Prototype\\tmp\\bg\\app.log",
+    "errPath":  "C:\\Users\\pc\\Desktop\\Trace-9\\Trace-Prototype\\tmp\\bg\\app.err.log"
+}

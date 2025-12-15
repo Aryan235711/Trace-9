@@ -1,43 +1,32 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type UserTargets, type UpdateUserTargets } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
+import { useNotifications } from "@/hooks/useNotifications";
 
 export function useTargets() {
-  const { toast } = useToast();
+  const notify = useNotifications();
   const queryClient = useQueryClient();
 
   const { data: targets, isLoading, error } = useQuery({
     queryKey: ["targets"],
     queryFn: api.getTargets,
-    retry: false,
   });
+
+  const handleUnauthorized = () => {
+    localStorage.removeItem('auth_token');
+    window.dispatchEvent(new Event('trace:auth:logout'));
+  };
 
   const updateMutation = useMutation({
     mutationFn: (data: UpdateUserTargets) => api.updateTargets(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["targets"] });
-      toast({
-        title: "Targets updated",
-        description: "Your targets have been saved successfully.",
-      });
+      notify.success("Targets updated", "Your targets have been saved successfully.");
     },
     onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to update targets. Please try again.",
-        variant: "destructive",
+      notify.apiError(error, {
+        fallbackTitle: "Error",
+        fallbackDescription: "Failed to update targets. Please try again.",
+        onUnauthorized: handleUnauthorized,
       });
     },
   });

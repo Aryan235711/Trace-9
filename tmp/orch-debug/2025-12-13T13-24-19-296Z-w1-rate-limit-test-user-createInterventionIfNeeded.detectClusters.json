@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-12-13T13:24:19.296Z",
+  "event": "createInterventionIfNeeded.detectClusters",
+  "userId": "rate-limit-test-user",
+  "payload": {
+    "date": "2024-01-25",
+    "result": {
+      "mode": "positive",
+      "clusters": [],
+      "hypothesis": "Excellent health patterns detected. Continue current habits for sustained wellness."
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "timestamp": "2025-12-13T13:35:01.969Z",
+  "event": "detectClusters.logs",
+  "userId": "concurrent-user-43",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-01-04",
+    "startDate": "2023-12-28",
+    "logsCount": 4,
+    "logs": [
+      {
+        "date": "2024-01-01",
+        "symptomScore": 0,
+        "sleepFlag": "YELLOW",
+        "rhrFlag": "YELLOW",
+        "hrvFlag": "YELLOW",
+        "proteinFlag": "YELLOW",
+        "gutFlag": "RED",
+        "sunFlag": "GREEN",
+        "exerciseFlag": "YELLOW"
+      },
+      {
+        "date": "2024-01-02",
+        "symptomScore": 2,
+        "sleepFlag": "YELLOW",
+        "rhrFlag": "YELLOW",
+        "hrvFlag": "YELLOW",
+        "proteinFlag": "YELLOW",
+        "gutFlag": "YELLOW",
+        "sunFlag": "RED",
+        "exerciseFlag": "RED"
+      },
+      {
+        "date": "2024-01-03",
+        "symptomScore": 1,
+        "sleepFlag": "YELLOW",
+        "rhrFlag": "YELLOW",
+        "hrvFlag": "YELLOW",
+        "proteinFlag": "GREEN",
+        "gutFlag": "YELLOW",
+        "sunFlag": "RED",
+        "exerciseFlag": "YELLOW"
+      },
+      {
+        "date": "2024-01-04",
+        "symptomScore": 0,
+        "sleepFlag": "YELLOW",
+        "rhrFlag": "YELLOW",
+        "hrvFlag": "YELLOW",
+        "proteinFlag": "GREEN",
+        "gutFlag": "RED",
+        "sunFlag": "GREEN",
+        "exerciseFlag": "RED"
+      }
+    ]
+  }
+}

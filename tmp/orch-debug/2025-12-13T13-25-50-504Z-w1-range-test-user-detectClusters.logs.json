@@ -1,0 +1,101 @@
+{
+  "timestamp": "2025-12-13T13:25:50.504Z",
+  "event": "detectClusters.logs",
+  "userId": "range-test-user",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-01-23",
+    "startDate": "2024-01-16",
+    "logsCount": 8,
+    "logs": [
+      {
+        "date": "2024-01-16",
+        "symptomScore": 4,
+        "sleepFlag": "RED",
+        "rhrFlag": "GREEN",
+        "hrvFlag": "GREEN",
+        "proteinFlag": "GREEN",
+        "gutFlag": "RED",
+        "sunFlag": "RED",
+        "exerciseFlag": "RED"
+      },
+      {
+        "date": "2024-01-17",
+        "symptomScore": 0,
+        "sleepFlag": "RED",
+        "rhrFlag": "YELLOW",
+        "hrvFlag": "GREEN",
+        "proteinFlag": "GREEN",
+        "gutFlag": "YELLOW",
+        "sunFlag": "YELLOW",
+        "exerciseFlag": "GREEN"
+      },
+      {
+        "date": "2024-01-18",
+        "symptomScore": 4,
+        "sleepFlag": "GREEN",
+        "rhrFlag": "GREEN",
+        "hrvFlag": "RED",
+        "proteinFlag": "GREEN",
+        "gutFlag": "GREEN",
+        "sunFlag": "YELLOW",
+        "exerciseFlag": "GREEN"
+      },
+      {
+        "date": "2024-01-19",
+        "symptomScore": 3,
+        "sleepFlag": "YELLOW",
+        "rhrFlag": "GREEN",
+        "hrvFlag": "RED",
+        "proteinFlag": "GREEN",
+        "gutFlag": "RED",
+        "sunFlag": "RED",
+        "exerciseFlag": "RED"
+      },
+      {
+        "date": "2024-01-20",
+        "symptomScore": 5,
+        "sleepFlag": "GREEN",
+        "rhrFlag": "GREEN",
+        "hrvFlag": "GREEN",
+        "proteinFlag": "GREEN",
+        "gutFlag": "RED",
+        "sunFlag": "GREEN",
+        "exerciseFlag": "RED"
+      },
+      {
+        "date": "2024-01-21",
+        "symptomScore": 4,
+        "sleepFlag": "RED",
+        "rhrFlag": "GREEN",
+        "hrvFlag": "YELLOW",
+        "proteinFlag": "GREEN",
+        "gutFlag": "RED",
+        "sunFlag": "GREEN",
+        "exerciseFlag": "RED"
+      },
+      {
+        "date": "2024-01-22",
+        "symptomScore": 0,
+        "sleepFlag": "RED",
+        "rhrFlag": "YELLOW",
+        "hrvFlag": "GREEN",
+        "proteinFlag": "GREEN",
+        "gutFlag": "RED",
+        "sunFlag": "YELLOW",
+        "exerciseFlag": "GREEN"
+      },
+      {
+        "date": "2024-01-23",
+        "symptomScore": 1,
+        "sleepFlag": "GREEN",
+        "rhrFlag": "GREEN",
+        "hrvFlag": "GREEN",
+        "proteinFlag": "GREEN",
+        "gutFlag": "GREEN",
+        "sunFlag": "RED",
+        "exerciseFlag": "GREEN"
+      }
+    ]
+  }
+}

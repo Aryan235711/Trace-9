@@ -1,0 +1,9 @@
+{
+  "timestamp": "2025-12-13T13:09:04.275Z",
+  "event": "createInterventionIfNeeded.lockSet",
+  "userId": "new-user-journey",
+  "payload": {
+    "date": "2024-01-10",
+    "interventionId": "int-1"
+  }
+}

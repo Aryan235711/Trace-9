@@ -1,0 +1,40 @@
+{
+  "timestamp": "2025-12-13T13:37:00.009Z",
+  "event": "detectClusters.mode1",
+  "userId": "journey-user-1",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-01-14",
+    "startDate": "2024-01-07",
+    "last3": [
+      {
+        "date": "2024-01-12",
+        "symptomScore": 4
+      },
+      {
+        "date": "2024-01-13",
+        "symptomScore": 4
+      },
+      {
+        "date": "2024-01-14",
+        "symptomScore": 4
+      }
+    ],
+    "result": {
+      "mode": "negative",
+      "clusters": [
+        [
+          "symptom",
+          "sleep",
+          "rhr",
+          "hrv",
+          "protein",
+          "gut",
+          "sun",
+          "exercise"
+        ]
+      ],
+      "hypothesis": "High symptoms with sleep, rhr, hrv, protein, gut, sun, exercise issues detected. Consider improving sleep habits."
+    }
+  }
+}

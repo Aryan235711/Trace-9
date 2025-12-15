@@ -2,9 +2,11 @@ import { insertDailyLogSchema, insertUserTargetsSchema, insertInterventionSchema
 import { fromZodError } from "zod-validation-error";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const SUSPICIOUS_SQL_RE = /\b(drop|delete|insert|update|union|select)\b/i;
+const SUSPICIOUS_XSS_RE = /(<\s*script\b|javascript:|onerror\s*=|onload\s*=|<\s*img\b|<\s*svg\b|<\s*iframe\b|<\s*body\b)/i;
 
 function bad(msg: string): never {
-  throw new Error(msg);
+  throw new Error(`Validation error: ${msg}`);
 }
 
 export function validateDailyLogPayload(payload: any) {
@@ -29,18 +31,33 @@ export function validateDailyLogPayload(payload: any) {
 
   // Date format
   if (!DATE_RE.test(data.date)) bad('`date` must be YYYY-MM-DD');
+  {
+    // Ensure it's a real calendar date (e.g., reject 9999-99-99, 2024-13-45, etc.)
+    const d = new Date(`${data.date}T00:00:00.000Z`);
+    if (Number.isNaN(d.getTime())) bad('`date` must be a valid calendar date');
+    // Guard against Date() normalizing invalid inputs (e.g., 2024-02-31 -> 2024-03-02)
+    if (d.toISOString().slice(0, 10) !== data.date) bad('`date` must be a valid calendar date');
+  }
 
   // Numeric ranges
   if (typeof data.sleep !== 'number' || data.sleep < 0 || data.sleep > 24) bad('`sleep` must be a number between 0 and 24');
-  if (typeof data.rhr !== 'number' || data.rhr <= 0 || data.rhr > 300) bad('`rhr` must be a positive reasonable BPM');
-  if (typeof data.hrv !== 'number' || data.hrv < 0) bad('`hrv` must be a non-negative number');
+  if (!Number.isInteger(data.rhr) || data.rhr <= 0 || data.rhr >= 300) bad('`rhr` must be a positive reasonable BPM');
+  if (!Number.isFinite(data.hrv) || typeof data.hrv !== 'number' || data.hrv < 0) bad('`hrv` must be a non-negative number');
 
   if (!Number.isInteger(data.protein) || data.protein < 0 || data.protein > 5000) bad('`protein` must be an integer between 0 and 5000');
   if (!Number.isInteger(data.gut) || data.gut < 1 || data.gut > 5) bad('`gut` must be an integer between 1 and 5');
-  if (!Number.isInteger(data.sun) || data.sun < 1 || data.sun > 5) bad('`sun` must be an integer in {1,3,5}');
+  if (!Number.isInteger(data.sun) || data.sun < 1 || data.sun > 5) bad('`sun` must be an integer between 1 and 5');
   if (!Number.isInteger(data.exercise) || data.exercise < 1 || data.exercise > 5) bad('`exercise` must be an integer between 1 and 5');
 
   if (!Number.isInteger(data.symptomScore) || data.symptomScore < 0 || data.symptomScore > 5) bad('`symptomScore` must be integer 0-5');
+
+  if (data.symptomName != null) {
+    if (typeof data.symptomName !== 'string') bad('`symptomName` must be a string');
+    const symptomName = data.symptomName.trim();
+    if (symptomName.length > 200) bad('`symptomName` must be at most 200 characters');
+    if (SUSPICIOUS_SQL_RE.test(symptomName)) bad('`symptomName` contains disallowed content');
+    if (SUSPICIOUS_XSS_RE.test(symptomName)) bad('`symptomName` contains disallowed content');
+  }
 
   // Everything okay
   return data;

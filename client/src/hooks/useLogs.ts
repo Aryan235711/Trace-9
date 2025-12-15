@@ -1,43 +1,36 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type DailyLog, type CreateDailyLog } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { useNotifications } from "@/hooks/useNotifications";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 export function useLogs(startDate?: string, endDate?: string) {
-  const { toast } = useToast();
+  const notify = useNotifications();
   const queryClient = useQueryClient();
 
-  const { data: logs = [], isLoading, error } = useQuery({
+  const enabled = Boolean(startDate || endDate);
+
+  const { data: logs = [], isLoading, isFetching, error } = useQuery({
     queryKey: ["logs", startDate, endDate],
     queryFn: () => api.getLogs(startDate, endDate),
-    retry: false,
+    enabled,
   });
+
+  const handleUnauthorized = () => {
+    localStorage.removeItem('auth_token');
+    window.dispatchEvent(new Event('trace:auth:logout'));
+  };
 
   const createMutation = useMutation({
     mutationFn: (data: CreateDailyLog) => api.createLog(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["logs"] });
-      toast({
-        title: "Log saved",
-        description: "Your daily log has been saved successfully.",
-      });
+      notify.success("Log saved", "Your daily log has been saved successfully.");
     },
     onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save log. Please try again.",
-        variant: "destructive",
+      notify.apiError(error, {
+        fallbackTitle: "Error",
+        fallbackDescription: "Failed to save log. Please try again.",
+        onUnauthorized: handleUnauthorized,
       });
     },
   });
@@ -47,27 +40,13 @@ export function useLogs(startDate?: string, endDate?: string) {
       api.updateLog(date, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["logs"] });
-      toast({
-        title: "Log updated",
-        description: "Your daily log has been updated successfully.",
-      });
+      notify.success("Log updated", "Your daily log has been updated successfully.");
     },
     onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update log. Please try again.",
-        variant: "destructive",
+      notify.apiError(error, {
+        fallbackTitle: "Error",
+        fallbackDescription: "Failed to update log. Please try again.",
+        onUnauthorized: handleUnauthorized,
       });
     },
   });
@@ -76,27 +55,13 @@ export function useLogs(startDate?: string, endDate?: string) {
     mutationFn: (date: string) => api.deleteLog(date),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["logs"] });
-      toast({
-        title: "Log deleted",
-        description: "Your daily log has been deleted.",
-      });
+      notify.success("Log deleted", "Your daily log has been deleted.");
     },
     onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to delete log. Please try again.",
-        variant: "destructive",
+      notify.apiError(error, {
+        fallbackTitle: "Error",
+        fallbackDescription: "Failed to delete log. Please try again.",
+        onUnauthorized: handleUnauthorized,
       });
     },
   });
@@ -104,12 +69,16 @@ export function useLogs(startDate?: string, endDate?: string) {
   return {
     logs,
     isLoading,
+    isFetching,
     error,
     createLog: createMutation.mutate,
+    createLogAsync: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
     updateLog: updateMutation.mutate,
+    updateLogAsync: updateMutation.mutateAsync,
     isUpdating: updateMutation.isPending,
     deleteLog: deleteMutation.mutate,
+    deleteLogAsync: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
   };
 }

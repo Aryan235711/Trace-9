@@ -1,0 +1,9 @@
+{
+  "timestamp": "2025-12-13T13:24:18.157Z",
+  "event": "route.logs.post.hit",
+  "userId": "rate-limit-test-user",
+  "payload": {
+    "method": "POST",
+    "date": "2024-01-11"
+  }
+}

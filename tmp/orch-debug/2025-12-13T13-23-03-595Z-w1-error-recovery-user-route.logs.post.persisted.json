@@ -1,0 +1,9 @@
+{
+  "timestamp": "2025-12-13T13:23:03.595Z",
+  "event": "route.logs.post.persisted",
+  "userId": "error-recovery-user",
+  "payload": {
+    "date": "2024-01-15",
+    "id": "log-1765632183594-uvz9r6nac"
+  }
+}

@@ -1,18 +1,20 @@
 import { Switch, Route, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
-import Landing from "@/pages/Landing";
 import { AppLayout } from "@/components/layout/AppLayout";
-import Onboarding from "@/pages/Onboarding";
-import Dashboard from "@/pages/Dashboard";
-import DailyLog from "@/pages/DailyLog";
-import History from "@/pages/History";
 import { useAuth } from "@/hooks/useAuth";
 import { useStore } from "@/lib/store";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
+
+const LoginPage = lazy(() => import("@/pages/LoginPage").then((m) => ({ default: m.LoginPage })));
+const Onboarding = lazy(() => import("@/pages/Onboarding"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const DailyLog = lazy(() => import("@/pages/DailyLog"));
+const History = lazy(() => import("@/pages/History"));
+const Upgrade = lazy(() => import("@/pages/Upgrade"));
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const { hasAcceptedDisclaimer } = useStore();
   const [location, setLocation] = useLocation();
 
@@ -24,43 +26,50 @@ function Router() {
   }, [isAuthenticated, hasAcceptedDisclaimer, location, setLocation]);
 
   // Show loading state
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-gray-300">Loading...</div>
       </div>
     );
   }
 
-  // Show landing page if not authenticated
+  // Show login page if not authenticated
   if (!isAuthenticated) {
     return (
-      <Switch>
-        <Route path="/" component={Landing} />
-        <Route component={Landing} />
-      </Switch>
+      <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><div className="text-gray-300">Loading...</div></div>}>
+        <Switch>
+          <Route path="/" component={LoginPage} />
+          <Route component={LoginPage} />
+        </Switch>
+      </Suspense>
     );
   }
 
   // If in onboarding, render it without app layout
   if (location === '/onboarding') {
     return (
-      <Switch>
-        <Route path="/onboarding" component={Onboarding} />
-        <Route component={Onboarding} />
-      </Switch>
+      <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center"><div className="text-gray-300">Loading...</div></div>}>
+        <Switch>
+          <Route path="/onboarding" component={Onboarding} />
+          <Route component={Onboarding} />
+        </Switch>
+      </Suspense>
     );
   }
 
   // Authenticated and past onboarding
   return (
     <AppLayout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/log" component={DailyLog} />
-        <Route path="/history" component={History} />
-        <Route component={NotFound} />
-      </Switch>
+      <Suspense fallback={<div className="min-h-[50vh] flex items-center justify-center"><div className="text-gray-300">Loading...</div></div>}>
+        <Switch>
+          <Route path="/" component={Dashboard} />
+          <Route path="/log" component={DailyLog} />
+          <Route path="/history" component={History} />
+          <Route path="/upgrade" component={Upgrade} />
+          <Route component={NotFound} />
+        </Switch>
+      </Suspense>
     </AppLayout>
   );
 }

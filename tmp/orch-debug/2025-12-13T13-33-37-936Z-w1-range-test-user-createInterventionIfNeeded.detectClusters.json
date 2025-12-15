@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-12-13T13:33:37.936Z",
+  "event": "createInterventionIfNeeded.detectClusters",
+  "userId": "range-test-user",
+  "payload": {
+    "date": "2024-01-23",
+    "result": {
+      "mode": "negative",
+      "clusters": [
+        [
+          "symptom",
+          "rhr",
+          "protein",
+          "gut",
+          "sun",
+          "exercise"
+        ]
+      ],
+      "hypothesis": "High symptoms with rhr, gut, sun, exercise issues detected. Consider improving rhr habits."
+    }
+  }
+}

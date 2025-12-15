@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-12-13T13:28:34.988Z",
+  "event": "detectClusters.fetched",
+  "userId": "memory-test-user",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-11-30",
+    "startDate": "2024-11-23",
+    "fetchedCount": 8
+  }
+}

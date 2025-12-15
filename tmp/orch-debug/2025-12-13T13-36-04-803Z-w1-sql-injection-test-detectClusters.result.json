@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-12-13T13:36:04.803Z",
+  "event": "detectClusters.result",
+  "userId": "sql-injection-test",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-01-15",
+    "startDate": "2024-01-08",
+    "result": {
+      "mode": null,
+      "clusters": [],
+      "hypothesis": null
+    }
+  }
+}

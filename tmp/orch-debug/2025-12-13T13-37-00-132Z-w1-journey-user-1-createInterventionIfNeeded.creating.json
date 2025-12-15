@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-12-13T13:37:00.132Z",
+  "event": "createInterventionIfNeeded.creating",
+  "userId": "journey-user-1",
+  "payload": {
+    "date": "2024-01-14",
+    "start": "2024-01-14T00:00:00.000Z",
+    "end": "2024-01-21T00:00:00.000Z",
+    "hypothesis": "High symptoms with sleep, rhr, hrv, protein, gut, sun, exercise issues detected. Consider improving sleep habits."
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-12-13T13:25:29.768Z",
+  "event": "createInterventionIfNeeded.creating",
+  "userId": "load-test-user",
+  "payload": {
+    "date": "2024-01-10",
+    "start": "2024-01-10T00:00:00.000Z",
+    "end": "2024-01-17T00:00:00.000Z",
+    "hypothesis": "High symptoms with gut, exercise issues detected. Consider improving gut habits."
+  }
+}

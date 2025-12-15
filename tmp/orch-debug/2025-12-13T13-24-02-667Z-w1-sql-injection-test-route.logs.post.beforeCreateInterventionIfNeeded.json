@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-12-13T13:24:02.667Z",
+  "event": "route.logs.post.beforeCreateInterventionIfNeeded",
+  "userId": "sql-injection-test",
+  "payload": {
+    "date": "2024-01-15"
+  }
+}

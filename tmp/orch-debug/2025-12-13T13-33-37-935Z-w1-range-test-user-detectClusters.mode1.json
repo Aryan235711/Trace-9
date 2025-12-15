@@ -1,0 +1,38 @@
+{
+  "timestamp": "2025-12-13T13:33:37.935Z",
+  "event": "detectClusters.mode1",
+  "userId": "range-test-user",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-01-23",
+    "startDate": "2024-01-16",
+    "last3": [
+      {
+        "date": "2024-01-21",
+        "symptomScore": 5
+      },
+      {
+        "date": "2024-01-22",
+        "symptomScore": 4
+      },
+      {
+        "date": "2024-01-23",
+        "symptomScore": 5
+      }
+    ],
+    "result": {
+      "mode": "negative",
+      "clusters": [
+        [
+          "symptom",
+          "rhr",
+          "protein",
+          "gut",
+          "sun",
+          "exercise"
+        ]
+      ],
+      "hypothesis": "High symptoms with rhr, gut, sun, exercise issues detected. Consider improving rhr habits."
+    }
+  }
+}

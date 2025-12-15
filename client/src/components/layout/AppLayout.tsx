@@ -2,6 +2,15 @@ import React from 'react';
 import { useLocation, Link } from 'wouter';
 import { LayoutDashboard, Plus, History, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NotificationCenter } from '@/components/NotificationCenter';
+import { UserMenu } from '@/components/UserMenu';
+import { useAuth } from '@/hooks/useAuth';
+
+function getFirstName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return 'there';
+  return trimmed.split(/\s+/)[0] || 'there';
+}
 
 export function BottomNav() {
   const [location] = useLocation();
@@ -49,9 +58,20 @@ export function BottomNav() {
 }
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-white/20 selection:text-white">
-      <main className="flex-1 pb-24 max-w-md mx-auto w-full relative">
+      <main className="flex-1 pb-24 pt-16 max-w-5xl mx-auto w-full relative px-4 sm:px-6 lg:px-8">
+        <div className="absolute inset-x-4 sm:inset-x-6 lg:inset-x-8 top-4 z-40 flex items-center justify-between">
+          <div className="text-lg sm:text-2xl font-black bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent tracking-tight" style={{fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'}}>
+            Trace-9
+          </div>
+          <div className="flex items-center gap-2">
+            <NotificationCenter />
+            <UserMenu />
+          </div>
+        </div>
         {children}
       </main>
       <BottomNav />

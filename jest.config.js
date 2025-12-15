@@ -1,11 +1,13 @@
 export default {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/server', '<rootDir>/shared'],
-  testMatch: ['**/__tests__/**/*.test.ts'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  roots: ['<rootDir>/server', '<rootDir>/shared', '<rootDir>/client'],
+  testMatch: ['**/__tests__/**/*.test.ts', '**/src/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   moduleNameMapper: {
     '^@shared/(.*)$': '<rootDir>/shared/$1',
+    '^@/(.*)$': '<rootDir>/client/src/$1',
   },
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {

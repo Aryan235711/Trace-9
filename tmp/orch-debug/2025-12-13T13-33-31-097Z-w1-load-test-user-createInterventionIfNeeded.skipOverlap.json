@@ -1,0 +1,9 @@
+{
+  "timestamp": "2025-12-13T13:33:31.098Z",
+  "event": "createInterventionIfNeeded.skipOverlap",
+  "userId": "load-test-user",
+  "payload": {
+    "date": "2024-03-03",
+    "exId": "int-1765632811031-0.463944088565182"
+  }
+}

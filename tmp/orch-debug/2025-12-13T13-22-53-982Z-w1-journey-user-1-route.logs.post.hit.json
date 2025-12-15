@@ -1,0 +1,9 @@
+{
+  "timestamp": "2025-12-13T13:22:53.982Z",
+  "event": "route.logs.post.hit",
+  "userId": "journey-user-1",
+  "payload": {
+    "method": "POST",
+    "date": "2024-01-14"
+  }
+}

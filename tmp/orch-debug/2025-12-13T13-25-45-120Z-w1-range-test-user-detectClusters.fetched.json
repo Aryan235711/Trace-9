@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-12-13T13:25:45.120Z",
+  "event": "detectClusters.fetched",
+  "userId": "range-test-user",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-01-06",
+    "startDate": "2023-12-30",
+    "fetchedCount": 6
+  }
+}

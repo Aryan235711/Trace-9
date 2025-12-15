@@ -1,12 +1,17 @@
 // API client with proper types
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
+async function requestResponse(url: string, options?: RequestInit): Promise<Response> {
+  const token = localStorage.getItem('auth_token');
+  return fetch(url, {
     ...options,
-    credentials: "include",
     headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
       ...options?.headers,
     },
   });
+}
+
+async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const res = await requestResponse(url, options);
 
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -73,6 +78,17 @@ export interface Intervention {
   createdAt: string;
 }
 
+export type InsightState = 'provisional' | 'locked' | 'action-required';
+
+export interface InsightResponse {
+  state: InsightState;
+  message?: string;
+  activeInterventionId?: string;
+  mode?: 'negative' | 'positive' | 'stagnation' | null;
+  hypothesis?: string | null;
+  endDate?: string;
+}
+
 export interface CreateDailyLog {
   date: string;
   sleep: number;
@@ -99,6 +115,11 @@ export interface CreateIntervention {
   endDate: string;
 }
 
+export type LogsPage = {
+  logs: DailyLog[];
+  nextCursor: string | null;
+};
+
 // API functions
 export const api = {
   // Targets
@@ -115,12 +136,70 @@ export const api = {
   },
   
   // Logs
-  getLogs: async (startDate?: string, endDate?: string): Promise<DailyLog[]> => {
+  getLogs: async (
+    startDate?: string,
+    endDate?: string,
+    options?: { limit?: number; cursor?: string }
+  ): Promise<DailyLog[]> => {
+    // If the caller explicitly requests a page (cursor/limit), do a single request.
+    if (options?.cursor || options?.limit) {
+      const params = new URLSearchParams();
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+      if (options?.limit) params.set('limit', String(options.limit));
+      if (options?.cursor) params.set('cursor', String(options.cursor));
+      const query = params.toString();
+      return request<DailyLog[]>(`/api/logs${query ? `?${query}` : ''}`);
+    }
+
+    // Default behavior: safely page through all logs using cursor headers.
+    const all: DailyLog[] = [];
+    const seen = new Set<string>();
+    let cursor: string | null = null;
+    const maxPages = 100; // safety cap
+
+    for (let page = 0; page < maxPages; page += 1) {
+      const { logs, nextCursor } = await api.getLogsPage(startDate, endDate, { limit: 1000, cursor: cursor ?? undefined });
+
+      for (const log of logs) {
+        // De-dupe defensively across pages.
+        const key = `${log.date}:${log.id}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          all.push(log);
+        }
+      }
+
+      if (!nextCursor) break;
+      if (nextCursor === cursor) break;
+      cursor = nextCursor;
+    }
+
+    return all;
+  },
+
+  // Logs (single page + cursor via response headers)
+  getLogsPage: async (
+    startDate?: string,
+    endDate?: string,
+    options?: { limit?: number; cursor?: string }
+  ): Promise<LogsPage> => {
     const params = new URLSearchParams();
-    if (startDate) params.set("startDate", startDate);
-    if (endDate) params.set("endDate", endDate);
+    if (startDate) params.set('startDate', startDate);
+    if (endDate) params.set('endDate', endDate);
+    params.set('limit', String(Math.min(Math.max(options?.limit ?? 1000, 1), 1000)));
+    if (options?.cursor) params.set('cursor', String(options.cursor));
+
     const query = params.toString();
-    return request<DailyLog[]>(`/api/logs${query ? `?${query}` : ""}`);
+    const res = await requestResponse(`/api/logs${query ? `?${query}` : ''}`);
+    if (!res.ok) {
+      const text = (await res.text()) || res.statusText;
+      throw new Error(`${res.status}: ${text}`);
+    }
+
+    const logs = (await res.json()) as DailyLog[];
+    const nextCursor = res.headers.get('X-Next-Cursor');
+    return { logs, nextCursor: nextCursor ? String(nextCursor) : null };
   },
   
   getLog: async (date: string): Promise<DailyLog> => {
@@ -175,5 +254,18 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+  },
+
+  checkInIntervention: async (id: string, result: 'Yes' | 'No' | 'Partial'): Promise<Intervention> => {
+    return request<Intervention>(`/api/interventions/${id}/checkin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result }),
+    });
+  },
+
+  // Insights
+  getInsights: async (): Promise<InsightResponse> => {
+    return request<InsightResponse>("/api/insights");
   },
 };

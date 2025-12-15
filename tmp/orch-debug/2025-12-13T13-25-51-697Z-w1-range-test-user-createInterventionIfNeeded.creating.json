@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-12-13T13:25:51.697Z",
+  "event": "createInterventionIfNeeded.creating",
+  "userId": "range-test-user",
+  "payload": {
+    "date": "2024-01-28",
+    "start": "2024-01-28T00:00:00.000Z",
+    "end": "2024-02-04T00:00:00.000Z",
+    "hypothesis": "High symptoms with hrv, gut, exercise issues detected. Consider improving hrv habits."
+  }
+}

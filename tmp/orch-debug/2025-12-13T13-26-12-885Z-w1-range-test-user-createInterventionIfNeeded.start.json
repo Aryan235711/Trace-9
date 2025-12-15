@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-12-13T13:26:12.885Z",
+  "event": "createInterventionIfNeeded.start",
+  "userId": "range-test-user",
+  "payload": {
+    "date": "2024-05-30"
+  }
+}

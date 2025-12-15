@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-12-13T13:34:56.477Z",
+  "event": "createInterventionIfNeeded.start",
+  "userId": "concurrent-user-35",
+  "payload": {
+    "date": "2024-01-10"
+  }
+}

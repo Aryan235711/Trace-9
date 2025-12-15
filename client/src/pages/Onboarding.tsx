@@ -86,8 +86,8 @@ export default function Onboarding() {
       <div className="space-y-8 flex-1">
         
         {/* Protein */}
-        <div className="bg-card border border-border/50 p-6 rounded-3xl shadow-sm">
-          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex justify-between items-center">
+        <div className="mono-card p-6">
+          <label className="mono-section-label mb-4 flex justify-between items-center">
             <span className="flex items-center gap-2"><Utensils size={14} /> Protein Target</span>
             <span className="text-white text-lg">{targets.proteinTarget}g</span>
           </label>
@@ -101,8 +101,8 @@ export default function Onboarding() {
         </div>
 
         {/* Gut Score */}
-        <div className="bg-card border border-border/50 p-6 rounded-3xl shadow-sm">
-          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+        <div className="mono-card p-6">
+          <label className="mono-section-label mb-4 flex items-center gap-2">
             <Smile size={14} /> Target Gut Health
           </label>
           <div className="flex justify-between gap-2">
@@ -123,8 +123,8 @@ export default function Onboarding() {
         </div>
 
         {/* Sun Exposure */}
-        <div className="bg-card border border-border/50 p-6 rounded-3xl shadow-sm">
-          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+        <div className="mono-card p-6">
+          <label className="mono-section-label mb-4 flex items-center gap-2">
             <Sun size={14} /> Sun Exposure Goal
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -149,8 +149,8 @@ export default function Onboarding() {
         </div>
 
          {/* Exercise */}
-         <div className="bg-card border border-border/50 p-6 rounded-3xl shadow-sm">
-          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+         <div className="mono-card p-6">
+          <label className="mono-section-label mb-4 flex items-center gap-2">
             <Dumbbell size={14} /> Target Intensity
           </label>
           <div className="grid grid-cols-4 gap-2">

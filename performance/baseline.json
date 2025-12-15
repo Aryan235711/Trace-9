@@ -1,0 +1,39 @@
+{
+  "base": "http://localhost:5000",
+  "timestamp": "2025-12-11T16:44:10.141Z",
+  "results": [
+    {
+      "path": "/api/targets",
+      "status": 200,
+      "duration": 263,
+      "body": {
+        "id": "39cd973f-f781-4b8a-8807-2dec09ad7124",
+        "userId": "user-1",
+        "proteinTarget": 100,
+        "gutTarget": 5,
+        "sunTarget": 5,
+        "exerciseTarget": 5,
+        "sleepBaseline": null,
+        "rhrBaseline": null,
+        "hrvBaseline": null,
+        "isBaselineComplete": false,
+        "onboardingComplete": false,
+        "activeInterventionId": null,
+        "createdAt": "2025-12-11T16:41:39.410Z",
+        "updatedAt": "2025-12-11T16:41:39.410Z"
+      }
+    },
+    {
+      "path": "/api/logs?startDate=2025-12-04&endDate=2025-12-11",
+      "status": 200,
+      "duration": 52,
+      "body": []
+    },
+    {
+      "path": "/api/interventions",
+      "status": 200,
+      "duration": 45,
+      "body": []
+    }
+  ]
+}

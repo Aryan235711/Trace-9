@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-12-13T13:35:16.704Z",
+  "event": "route.logs.post.afterCreateInterventionIfNeeded",
+  "userId": "memory-test-user",
+  "payload": {
+    "date": "2024-02-11"
+  }
+}

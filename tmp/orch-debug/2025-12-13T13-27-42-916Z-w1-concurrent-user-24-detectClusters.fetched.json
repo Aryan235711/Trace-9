@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-12-13T13:27:42.916Z",
+  "event": "detectClusters.fetched",
+  "userId": "concurrent-user-24",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-01-06",
+    "startDate": "2023-12-30",
+    "fetchedCount": 4
+  }
+}

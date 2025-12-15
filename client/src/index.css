@@ -63,11 +63,23 @@
   
   /* Soft Modern Aesthetic */
   .mono-card {
-    @apply bg-card border border-border/50 rounded-2xl shadow-sm transition-all;
+    @apply bg-card border border-border/50 rounded-3xl shadow-sm;
+  }
+
+  .mono-card-glass {
+    @apply bg-card/40 border border-border/50 rounded-3xl shadow-sm backdrop-blur-sm;
   }
   
   .mono-input {
     @apply bg-secondary/50 border border-transparent rounded-xl focus:ring-2 focus:ring-white/20 focus:bg-secondary transition-all;
+  }
+
+  .mono-section-label {
+    @apply text-xs font-bold text-muted-foreground uppercase tracking-wider;
+  }
+
+  .mono-body-muted {
+    @apply text-sm text-muted-foreground leading-snug;
   }
 }
 

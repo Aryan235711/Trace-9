@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-12-13T13:34:57.823Z",
+  "event": "detectClusters.result",
+  "userId": "concurrent-user-36",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-01-01",
+    "startDate": "2023-12-25",
+    "result": {
+      "mode": null,
+      "clusters": [],
+      "hypothesis": null
+    }
+  }
+}

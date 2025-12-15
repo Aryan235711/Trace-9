@@ -1,0 +1,9 @@
+{
+  "timestamp": "2025-12-13T13:33:30.987Z",
+  "event": "createInterventionIfNeeded.existingInterventions",
+  "userId": "load-test-user",
+  "payload": {
+    "date": "2024-03-05",
+    "count": 0
+  }
+}

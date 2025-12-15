@@ -1,8 +1,15 @@
 import { storage } from "./storage";
 import type { InsertDailyLog } from "@shared/schema";
+import { writeDebugArtifact } from "./debugArtifacts";
 
 // Flag types
 type Flag = "RED" | "YELLOW" | "GREEN";
+
+const POPULATION_BASELINES = {
+  sleep: 7.5,
+  rhr: 65,
+  hrv: 50,
+} as const;
 
 // Orchestration engine for Trace-9
 // Implements: Universal Flagging, 7-Day Baseline Calculation, 3-Day Trend Rule, and Clustering
@@ -25,17 +32,24 @@ export async function processLog(
     throw new Error("User targets not found. Please complete onboarding first.");
   }
   
-  // Get last 7 days of logs (for baseline calculation)
+  // Fetch recent logs including the current day and dedupe by date.
+  // This avoids double-counting when processing an update of an existing log.
   const endDate = logData.date;
   const startDate = getDateDaysAgo(endDate, 7);
   const recentLogs = await storage.getDailyLogs(userId, startDate, endDate);
-  
-  // Calculate 7-day baselines if we have enough data and haven't already
-  if (!targets.isBaselineComplete && recentLogs.length >= 7) {
-    const sleepBaseline = calculateAverage(recentLogs.map(l => l.sleep));
-    const rhrBaseline = calculateAverage(recentLogs.map(l => l.rhr));
-    const hrvBaseline = calculateAverage(recentLogs.map(l => l.hrv));
-    
+  const byDate = new Map<string, any>();
+  for (const l of recentLogs) byDate.set(String((l as any).date), l);
+  byDate.set(String(logData.date), logData);
+  const uniqueLogs = Array.from(byDate.values()).sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+
+  // Calculate 7-day baselines once we have at least 7 unique days of wearable data.
+  // Until baselines exist, wearable flagging uses population averages.
+  if (!targets.isBaselineComplete && uniqueLogs.length >= 7) {
+    const last7 = uniqueLogs.slice(-7);
+    const sleepBaseline = calculateAverage(last7.map(l => l.sleep));
+    const rhrBaseline = calculateAverage(last7.map(l => l.rhr));
+    const hrvBaseline = calculateAverage(last7.map(l => l.hrv));
+
     await storage.updateUserTargets(userId, {
       sleepBaseline,
       rhrBaseline,
@@ -43,7 +57,7 @@ export async function processLog(
       isBaselineComplete: true,
       onboardingComplete: true,
     });
-    
+
     // Update local targets reference
     targets.sleepBaseline = sleepBaseline;
     targets.rhrBaseline = rhrBaseline;
@@ -54,7 +68,7 @@ export async function processLog(
   
   // Apply universal flagging
   const flags = applyUniversalFlagging(logData, targets);
-  
+
   // Return processed log with flags
   return {
     ...logData,
@@ -68,13 +82,21 @@ export async function processLog(
  * intervention lock exists for the user.
  */
 export async function createInterventionIfNeeded(userId: string, date: string) {
+  writeDebugArtifact('createInterventionIfNeeded.start', userId, { date });
   // Respect existing intervention lock
   const targets = await storage.getUserTargets(userId);
-  if (!targets) return;
-  if (targets.activeInterventionId) return; // lock present, do not create
+  if (!targets) {
+    writeDebugArtifact('createInterventionIfNeeded.noTargets', userId, { date });
+    return;
+  }
+  if (targets.activeInterventionId) {
+    writeDebugArtifact('createInterventionIfNeeded.locked', userId, { date, activeInterventionId: targets.activeInterventionId });
+    return; // lock present, do not create
+  }
 
-  // Detect clusters across last 3 days
-  const result = await detectClusters(userId, 3);
+  // Detect clusters across last 3 days (use persisted log date)
+  const result = await detectClusters(userId, 3, date);
+  writeDebugArtifact('createInterventionIfNeeded.detectClusters', userId, { date, result });
 
   if (result.mode === 'negative' && result.hypothesis) {
     // Create intervention for 7 days starting on `date`
@@ -85,11 +107,13 @@ export async function createInterventionIfNeeded(userId: string, date: string) {
 
       // Dedupe protection: check for duplicate hypothesis or overlapping active interventions
       const existing = await storage.getInterventions(userId);
+      writeDebugArtifact('createInterventionIfNeeded.existingInterventions', userId, { date, count: existing.length });
       const normalizedHyp = String(result.hypothesis).trim().toLowerCase();
       let skipCreate = false;
       for (const ex of existing) {
         const exHyp = String(ex.hypothesisText || '').trim().toLowerCase();
         if (exHyp && exHyp === normalizedHyp) {
+          writeDebugArtifact('createInterventionIfNeeded.skipDuplicate', userId, { date, exId: ex.id });
           skipCreate = true;
           break;
         }
@@ -97,6 +121,7 @@ export async function createInterventionIfNeeded(userId: string, date: string) {
         const exEnd = new Date(String(ex.endDate));
         const overlaps = !(end < exStart || start > exEnd);
         if (overlaps && !ex.result) {
+          writeDebugArtifact('createInterventionIfNeeded.skipOverlap', userId, { date, exId: ex.id });
           skipCreate = true;
           break;
         }
@@ -106,6 +131,7 @@ export async function createInterventionIfNeeded(userId: string, date: string) {
         return; // do not create duplicate/overlapping intervention
       }
 
+      writeDebugArtifact('createInterventionIfNeeded.creating', userId, { date, start: start.toISOString(), end: end.toISOString(), hypothesis: result.hypothesis });
       const intervention = await storage.createIntervention({
         userId,
         hypothesisText: result.hypothesis,
@@ -113,12 +139,15 @@ export async function createInterventionIfNeeded(userId: string, date: string) {
         endDate: end,
       });
 
+      writeDebugArtifact('createInterventionIfNeeded.created', userId, { date, interventionId: intervention.id });
+
       // Update user targets to set activeInterventionId lock
       await storage.updateUserTargets(userId, {
         activeInterventionId: intervention.id,
       });
+      writeDebugArtifact('createInterventionIfNeeded.lockSet', userId, { date, interventionId: intervention.id });
     } catch (err) {
-      console.error('Failed to create intervention:', err);
+      writeDebugArtifact('createInterventionIfNeeded.error', userId, { date, error: String((err as any)?.message || err) });
     }
   }
 }
@@ -143,20 +172,24 @@ function applyUniversalFlagging(
   exerciseFlag: Flag;
   symptomFlag: Flag;
 } {
+  const sleepBaseline = targets.isBaselineComplete ? targets.sleepBaseline : POPULATION_BASELINES.sleep;
+  const rhrBaseline = targets.isBaselineComplete ? targets.rhrBaseline : POPULATION_BASELINES.rhr;
+  const hrvBaseline = targets.isBaselineComplete ? targets.hrvBaseline : POPULATION_BASELINES.hrv;
+
   // Wearable flagging (based on baselines)
   const sleepFlag = flagWearable(
     logData.sleep,
-    targets.sleepBaseline,
+    sleepBaseline,
     'sleep'
   );
   const rhrFlag = flagWearable(
     logData.rhr,
-    targets.rhrBaseline,
+    rhrBaseline,
     'rhr'
   );
   const hrvFlag = flagWearable(
     logData.hrv,
-    targets.hrvBaseline,
+    hrvBaseline,
     'hrv'
   );
   
@@ -250,22 +283,64 @@ function flagSymptom(severity: number): Flag {
  */
 export async function detectClusters(
   userId: string,
-  days: number = 3
+  days: number = 3,
+  // Optional end date (YYYY-MM-DD) to evaluate the window relative to a persisted log
+  endDateStr?: string
 ): Promise<{
   mode: 'negative' | 'positive' | 'stagnation' | null;
   clusters: string[][];
   hypothesis: string | null;
 }> {
+  const targets = await storage.getUserTargets(userId);
+  if (!targets) {
+    return { mode: null, clusters: [], hypothesis: null };
+  }
+
   // Fetch up to the last 7 days (we need 3-day, 5-day and 7-day windows)
-  const endDate = new Date().toISOString().split('T')[0];
+  const endDate = endDateStr || new Date().toISOString().split('T')[0];
   const startDate = getDateDaysAgo(endDate, 7);
+  
   const logsRaw = await storage.getDailyLogs(userId, startDate, endDate);
 
-  // Ensure chronological order (oldest -> newest)
-  const logs = logsRaw.slice().sort((a: any, b: any) => a.date.localeCompare(b.date));
+  writeDebugArtifact('detectClusters.fetched', userId, {
+    days,
+    endDate,
+    startDate,
+    fetchedCount: logsRaw.length,
+  });
+
+  // Ensure chronological order (oldest -> newest) and compute flags from raw values.
+  // This makes insights robust even if historical logs were stored with provisional flags.
+  const logs = logsRaw
+    .slice()
+    .sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)))
+    .map((l: any) => ({
+      ...l,
+      ...applyUniversalFlagging(l, targets),
+    }));
+
+  writeDebugArtifact('detectClusters.logs', userId, {
+    days,
+    endDate,
+    startDate,
+    logsCount: logs.length,
+    logs: logs.map((l: any) => ({
+      date: l.date,
+      symptomScore: l.symptomScore,
+      sleepFlag: l.sleepFlag,
+      rhrFlag: l.rhrFlag,
+      hrvFlag: l.hrvFlag,
+      proteinFlag: l.proteinFlag,
+      gutFlag: l.gutFlag,
+      sunFlag: l.sunFlag,
+      exerciseFlag: l.exerciseFlag,
+    })),
+  });
 
   if (logs.length === 0) {
-    return { mode: null, clusters: [], hypothesis: null };
+    const emptyResult = { mode: null, clusters: [], hypothesis: null };
+    writeDebugArtifact('detectClusters.result', userId, { days, endDate, startDate, result: emptyResult });
+    return emptyResult;
   }
 
   const metrics = ['sleep', 'rhr', 'hrv', 'protein', 'gut', 'sun', 'exercise'];
@@ -278,191 +353,112 @@ export async function detectClusters(
     const mode1AllMatch = last3.every((log: any) => {
       const hasHighSymptoms = (log.symptomScore ?? 0) >= 4;
       const redYellowCount = metrics.filter((m) => {
-        const flagName = `${m}Flag`;
-        return (log as any)[flagName] === 'RED' || (log as any)[flagName] === 'YELLOW';
+        const flag = (log as any)[`${m}Flag`];
+        return flag === 'RED' || flag === 'YELLOW';
       }).length;
-      return hasHighSymptoms && redYellowCount >= 2;
+      
+      const matches = hasHighSymptoms && redYellowCount >= 2;
+      return matches;
     });
 
     if (mode1AllMatch) {
-      const clusters = findNegativeClusters(last3);
-      const hypothesis = generateNegativeHypothesis(clusters);
-      return { mode: 'negative', clusters, hypothesis };
+      const hypothesis = generateHypothesis('negative', last3, metrics);
+      
+      const result = {
+        mode: 'negative' as const,
+        clusters: [['symptom', ...metrics.filter(m => last3.some(log => (log as any)[`${m}Flag`] === 'RED' || (log as any)[`${m}Flag`] === 'YELLOW'))]],
+        hypothesis
+      };
+
+      writeDebugArtifact('detectClusters.mode1', userId, {
+        days,
+        endDate,
+        startDate,
+        last3: last3.map((l: any) => ({ date: l.date, symptomScore: l.symptomScore })),
+        result,
+      });
+      
+      return result;
     }
   }
 
-  // ----- Mode 2 (Positive Consistency - 7-day check) -----
-  // Required: 7-day window: >=80% of non-symptom flags are GREEN AND symptom avg <= 2
+  // ----- Mode 2 (Positive Cluster Alert) -----
+  let mode2Match = false;
   if (logs.length >= 7) {
     const last7 = logs.slice(-7);
     const totalFlags = last7.length * metrics.length;
-    let greenCount = 0;
-    let symptomSum = 0;
-
-    for (const log of last7) {
-      symptomSum += (log.symptomScore ?? 0);
-      for (const m of metrics) {
-        if ((log as any)[`${m}Flag`] === 'GREEN') greenCount++;
-      }
-    }
-
-    const greenRatio = greenCount / totalFlags;
-    const symptomAvg = symptomSum / last7.length;
-
-    if (greenRatio >= 0.8 && symptomAvg <= 2) {
-      const clusters = findPositiveClusters(last7);
-      const hypothesis = generatePositiveHypothesis(clusters);
-      return { mode: 'positive', clusters, hypothesis };
+    const greenFlagsTotal = last7.reduce((sum: number, log: any) => {
+      return sum + metrics.filter((m) => (log as any)[`${m}Flag`] === 'GREEN').length;
+    }, 0);
+    const avgSymptom = last7.reduce((sum, log) => sum + (log.symptomScore ?? 0), 0) / 7;
+    mode2Match = (greenFlagsTotal / Math.max(1, totalFlags)) >= 0.8 && avgSymptom <= 2;
+    if (mode2Match) {
+      const hypothesis = generateHypothesis('positive', last7, metrics);
+      return { mode: 'positive', clusters: [], hypothesis };
     }
   }
 
-  // ----- Mode 3 (Stagnation) -----
-  // Required: 5 consecutive days where 70% of non-symptom metric flags maintained the exact same state
-  if (logs.length >= 5) {
-    // Sliding windows of length 5 within available logs (prefer most recent windows)
-    for (let i = Math.max(0, logs.length - 5); i >= 0; i--) {
-      const window = logs.slice(i, i + 5);
-      if (window.length < 5) continue;
-
-      // Count metrics that remained identical across the 5-day window
-      let identicalMetrics = 0;
-      for (const m of metrics) {
-        const first = (window[0] as any)[`${m}Flag`];
-        const allSame = window.every((d: any) => d[`${m}Flag`] === first);
-        if (allSame) identicalMetrics++;
-      }
-
-      const identicalFlags = identicalMetrics * window.length; // each identical metric contributes 5 identical flags
-      const totalFlags = metrics.length * window.length;
-      const identicalRatio = identicalFlags / totalFlags;
-
-      if (identicalRatio >= 0.7) {
-        const hypothesis = "Your metrics have been stagnant. Consider adjusting your approach.";
-        return { mode: 'stagnation', clusters: [], hypothesis };
-      }
-    }
-  }
-
-  return { mode: null, clusters: [], hypothesis: null };
-}
-
-/**
- * Find metrics that are consistently RED when symptoms are RED
- */
-function findNegativeClusters(logs: any[]): string[][] {
-  const metrics = ['sleep', 'rhr', 'hrv', 'protein', 'gut', 'sun', 'exercise'];
-  const clusters: string[][] = [];
-  
-  // Find metrics with RED flags in majority of symptom-RED days
-  const symptomRedDays = logs.filter(l => l.symptomFlag === 'RED');
-  
-  for (const metric of metrics) {
-    const redCount = symptomRedDays.filter(
-      l => l[`${metric}Flag`] === 'RED'
-    ).length;
-    
-    if (redCount >= 2) { // At least 2 days of RED correlation
-      clusters.push([metric]);
+  // ----- Mode 3 (Stagnation Alert) -----
+  // Stagnation requires Mode 1 and Mode 2 to be inactive.
+  if (!mode2Match && logs.length >= 5) {
+    const last5 = logs.slice(-5);
+    const stableMetricCount = metrics.reduce((count: number, m: string) => {
+      const flags = last5.map((log: any) => (log as any)[`${m}Flag`]);
+      const allSame = flags.every((f) => f === flags[0]);
+      return count + (allSame ? 1 : 0);
+    }, 0);
+    const mode3Match = (stableMetricCount / metrics.length) >= 0.7;
+    if (mode3Match) {
+      const hypothesis = generateHypothesis('stagnation', last5, metrics);
+      return { mode: 'stagnation', clusters: [], hypothesis };
     }
   }
   
-  return clusters;
+  const result = { mode: null, clusters: [], hypothesis: null };
+
+  writeDebugArtifact('detectClusters.result', userId, { days, endDate, startDate, result });
+  
+  return result;
 }
 
-/**
- * Find metrics that are consistently GREEN when symptoms are GREEN
- */
-function findPositiveClusters(logs: any[]): string[][] {
-  const metrics = ['sleep', 'rhr', 'hrv', 'protein', 'gut', 'sun', 'exercise'];
-  const clusters: string[][] = [];
-  
-  const symptomGreenDays = logs.filter(l => l.symptomFlag === 'GREEN');
-  
-  for (const metric of metrics) {
-    const greenCount = symptomGreenDays.filter(
-      l => l[`${metric}Flag`] === 'GREEN'
-    ).length;
-    
-    if (greenCount >= 2) {
-      clusters.push([metric]);
-    }
-  }
-  
-  return clusters;
-}
-
-/**
- * Check if metrics are stagnant (no progress)
- */
-function checkStagnation(logs: any[]): boolean {
-  const metrics = ['sleep', 'rhr', 'hrv', 'protein', 'gut', 'sun', 'exercise'];
-  
-  // Count YELLOW flags across all metrics
-  let yellowCount = 0;
-  
-  for (const log of logs) {
-    for (const metric of metrics) {
-      if (log[`${metric}Flag`] === 'YELLOW') {
-        yellowCount++;
-      }
-    }
-  }
-  
-  // If more than 50% of flags are YELLOW, consider it stagnant
-  const totalFlags = logs.length * metrics.length;
-  return (yellowCount / totalFlags) > 0.5;
-}
-
-/**
- * Generate hypothesis for negative clusters
- */
-function generateNegativeHypothesis(clusters: string[][]): string | null {
-  if (clusters.length === 0) return null;
-  
-  const metrics = clusters.map(c => formatMetricName(c[0])).join(", ");
-  return `Your symptoms correlate with low ${metrics}. Try improving these areas.`;
-}
-
-/**
- * Generate hypothesis for positive clusters
- */
-function generatePositiveHypothesis(clusters: string[][]): string | null {
-  if (clusters.length === 0) return null;
-  
-  const metrics = clusters.map(c => formatMetricName(c[0])).join(", ");
-  return `Great! Your ${metrics} seem to be helping. Keep it up!`;
-}
-
-/**
- * Helper: Format metric name for display
- */
-function formatMetricName(metric: string): string {
-  const names: Record<string, string> = {
-    sleep: "Sleep",
-    rhr: "Resting Heart Rate",
-    hrv: "Heart Rate Variability",
-    protein: "Protein Intake",
-    gut: "Gut Health",
-    sun: "Sun Exposure",
-    exercise: "Exercise",
-  };
-  return names[metric] || metric;
-}
-
-/**
- * Helper: Calculate average of an array
- */
-function calculateAverage(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sum = values.reduce((a, b) => a + b, 0);
-  return Math.round((sum / values.length) * 10) / 10; // Round to 1 decimal
-}
-
-/**
- * Helper: Get date N days ago in YYYY-MM-DD format
- */
-export function getDateDaysAgo(fromDate: string, days: number): string {
-  const date = new Date(fromDate);
-  date.setDate(date.getDate() - days);
+// Helper functions
+function getDateDaysAgo(dateStr: string, daysAgo: number): string {
+  const date = new Date(dateStr);
+  date.setDate(date.getDate() - daysAgo);
   return date.toISOString().split('T')[0];
+}
+
+function calculateAverage(values: number[]): number {
+  return values.reduce((sum, val) => sum + val, 0) / values.length;
+}
+
+function getMostFrequent<T>(arr: T[]): T {
+  const counts = new Map<T, number>();
+  for (const item of arr) {
+    counts.set(item, (counts.get(item) || 0) + 1);
+  }
+  let maxCount = 0;
+  let mostFrequent = arr[0];
+  counts.forEach((count, item) => {
+    if (count > maxCount) {
+      maxCount = count;
+      mostFrequent = item;
+    }
+  });
+  return mostFrequent;
+}
+
+function generateHypothesis(mode: 'negative' | 'positive' | 'stagnation', logs: any[], metrics: string[]): string {
+  if (mode === 'negative') {
+    const problemMetrics = metrics.filter(m => 
+      logs.some(log => (log as any)[`${m}Flag`] === 'RED')
+    );
+    return `High symptoms with ${problemMetrics.join(', ')} issues detected. Consider improving ${problemMetrics[0]} habits.`;
+  }
+  
+  if (mode === 'positive') {
+    return 'Excellent health patterns detected. Continue current habits for sustained wellness.';
+  }
+  
+  return 'Health patterns have plateaued. Consider introducing new wellness strategies.';
 }

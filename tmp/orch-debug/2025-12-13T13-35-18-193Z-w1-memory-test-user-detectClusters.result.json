@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-12-13T13:35:18.193Z",
+  "event": "detectClusters.result",
+  "userId": "memory-test-user",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-02-28",
+    "startDate": "2024-02-21",
+    "result": {
+      "mode": null,
+      "clusters": [],
+      "hypothesis": null
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "timestamp": "2025-12-13T13:34:37.955Z",
+  "event": "route.logs.post.persisted",
+  "userId": "concurrent-user-11",
+  "payload": {
+    "date": "2024-01-02",
+    "id": "log-1765632877954-0.017841177141495912"
+  }
+}

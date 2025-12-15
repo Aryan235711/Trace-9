@@ -1,0 +1,17 @@
+{
+  "name": "Trace-9",
+  "short_name": "Trace-9",
+  "description": "Track daily health metrics and discover patterns.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

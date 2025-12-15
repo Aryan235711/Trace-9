@@ -1,0 +1,24 @@
+{
+  "timestamp": "2025-12-13T13:09:03.913Z",
+  "event": "createInterventionIfNeeded.detectClusters",
+  "userId": "new-user-journey",
+  "payload": {
+    "date": "2024-01-10",
+    "result": {
+      "mode": "negative",
+      "clusters": [
+        [
+          "symptom",
+          "sleep",
+          "rhr",
+          "hrv",
+          "protein",
+          "gut",
+          "sun",
+          "exercise"
+        ]
+      ],
+      "hypothesis": "High symptoms with sleep, rhr, hrv, protein, gut, sun, exercise issues detected. Consider improving sleep habits."
+    }
+  }
+}

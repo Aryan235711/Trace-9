@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-12-13T13:36:34.861Z",
+  "event": "detectClusters.result",
+  "userId": "rate-limit-test-user",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-01-11",
+    "startDate": "2024-01-04",
+    "result": {
+      "mode": null,
+      "clusters": [],
+      "hypothesis": null
+    }
+  }
+}

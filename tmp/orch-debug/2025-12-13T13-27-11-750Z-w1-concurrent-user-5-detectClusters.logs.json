@@ -1,0 +1,24 @@
+{
+  "timestamp": "2025-12-13T13:27:11.750Z",
+  "event": "detectClusters.logs",
+  "userId": "concurrent-user-5",
+  "payload": {
+    "days": 3,
+    "endDate": "2024-01-04",
+    "startDate": "2023-12-28",
+    "logsCount": 1,
+    "logs": [
+      {
+        "date": "2024-01-04",
+        "symptomScore": 1,
+        "sleepFlag": "YELLOW",
+        "rhrFlag": "YELLOW",
+        "hrvFlag": "YELLOW",
+        "proteinFlag": "GREEN",
+        "gutFlag": "GREEN",
+        "sunFlag": "GREEN",
+        "exerciseFlag": "RED"
+      }
+    ]
+  }
+}

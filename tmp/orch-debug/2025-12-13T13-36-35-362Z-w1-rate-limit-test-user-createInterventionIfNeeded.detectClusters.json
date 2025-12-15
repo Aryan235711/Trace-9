@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-12-13T13:36:35.362Z",
+  "event": "createInterventionIfNeeded.detectClusters",
+  "userId": "rate-limit-test-user",
+  "payload": {
+    "date": "2024-01-21",
+    "result": {
+      "mode": "stagnation",
+      "clusters": [],
+      "hypothesis": "Health patterns have plateaued. Consider introducing new wellness strategies."
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-12-13T13:34:29.448Z",
+  "event": "createInterventionIfNeeded.detectClusters",
+  "userId": "concurrent-user-2",
+  "payload": {
+    "date": "2024-01-02",
+    "result": {
+      "mode": null,
+      "clusters": [],
+      "hypothesis": null
+    }
+  }
+}

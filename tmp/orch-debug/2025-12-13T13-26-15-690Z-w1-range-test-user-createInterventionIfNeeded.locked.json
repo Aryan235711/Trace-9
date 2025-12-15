@@ -1,0 +1,9 @@
+{
+  "timestamp": "2025-12-13T13:26:15.690Z",
+  "event": "createInterventionIfNeeded.locked",
+  "userId": "range-test-user",
+  "payload": {
+    "date": "2024-06-25",
+    "activeInterventionId": "int-1765632351717-0.5302720940215861"
+  }
+}

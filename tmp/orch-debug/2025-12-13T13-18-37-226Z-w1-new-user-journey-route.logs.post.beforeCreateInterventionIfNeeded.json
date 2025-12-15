@@ -1,0 +1,8 @@
+{
+  "timestamp": "2025-12-13T13:18:37.226Z",
+  "event": "route.logs.post.beforeCreateInterventionIfNeeded",
+  "userId": "new-user-journey",
+  "payload": {
+    "date": "2024-01-07"
+  }
+}

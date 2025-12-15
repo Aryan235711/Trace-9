@@ -102,8 +102,8 @@ describe('Intervention 7-day check-in integration', () => {
       throw err;
     }
 
-    // Use supertest agent against the express app (no need to listen)
-    agent = request(app);
+    await new Promise<void>((resolve) => server.listen(0, () => resolve()));
+    agent = request(server);
   });
 
   beforeEach(() => {
@@ -112,7 +112,11 @@ describe('Intervention 7-day check-in integration', () => {
   });
 
   afterAll(async () => {
-    if (server) await new Promise((r) => server.close(() => r(undefined)));
+    if (server) {
+      (server as any).closeIdleConnections?.();
+      (server as any).closeAllConnections?.();
+      await new Promise((r) => server.close(() => r(undefined)));
+    }
   });
 
   test('creates intervention and allows checkin after endDate, clearing activeInterventionId', async () => {
@@ -226,7 +230,9 @@ describe('Intervention 7-day check-in integration', () => {
     // existing active intervention
     const start = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
     const end = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000);
-    await storage.createIntervention({ userId: 'user-1', hypothesisText: 'Overlap Test', startDate: start, endDate: end } as any);
+    const existing = await storage.createIntervention({ userId: 'user-1', hypothesisText: 'Overlap Test', startDate: start, endDate: end } as any);
+    // Route overlap protection keys off `userTargets.activeInterventionId`.
+    await storage.updateUserTargets('user-1', { activeInterventionId: existing.id });
 
     // Attempt to create overlapping intervention
     const res = await agent

@@ -2,7 +2,6 @@ import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
-import passport from "./auth";
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 
 const app = express();
@@ -26,7 +25,6 @@ app.use(
 
 app.use(express.urlencoded({ extended: false, limit: process.env.REQUEST_BODY_LIMIT || "100kb" }));
 app.use(compression());
-app.use(passport.initialize());
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

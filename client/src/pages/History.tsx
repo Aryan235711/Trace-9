@@ -1,16 +1,56 @@
 import React from 'react';
-import { useStore } from '@/lib/store';
 import { format, parseISO } from 'date-fns';
 import { FlaskConical, Check, X, Clock, PlusCircle, ArrowRight } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function History() {
-  const { pastInterventions, activeIntervention, startIntervention, completeIntervention } = useStore();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  const { data: interventions = [] } = useQuery({
+    queryKey: ['interventions'],
+    queryFn: async () => {
+      const response = await fetch('/api/interventions');
+      if (!response.ok) throw new Error('Failed to fetch interventions');
+      return response.json();
+    }
+  });
+  
+  const activeIntervention = interventions.find((int: any) => !int.result);
+  const pastInterventions = interventions.filter((int: any) => int.result);
+  
+  const createMutation = useMutation({
+    mutationFn: async (text: string) => {
+      const response = await fetch('/api/interventions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      if (!response.ok) throw new Error('Failed to create intervention');
+      return response.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['interventions'] })
+  });
+  
+  const completeMutation = useMutation({
+    mutationFn: async ({ id, result }: { id: string, result: string }) => {
+      const response = await fetch(`/api/interventions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ result })
+      });
+      if (!response.ok) throw new Error('Failed to complete intervention');
+      return response.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['interventions'] })
+  });
   const [newInterventionText, setNewInterventionText] = React.useState('');
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newInterventionText.trim()) return;
-    startIntervention(newInterventionText);
+    createMutation.mutate(newInterventionText);
     setNewInterventionText('');
   };
 
@@ -66,7 +106,7 @@ export default function History() {
               <p className="text-xs font-bold text-center mb-4 uppercase tracking-wider text-muted-foreground">Log Outcome</p>
               <div className="grid grid-cols-3 gap-3">
                 <button 
-                  onClick={() => completeIntervention('Yes')}
+                  onClick={() => completeMutation.mutate({ id: activeIntervention.id, result: 'Yes' })}
                   className="p-4 rounded-2xl border border-border/50 hover:border-flag-green hover:bg-flag-green/10 hover:text-flag-green transition-all flex flex-col items-center gap-2 group bg-card/50"
                 >
                   <div className="p-2 rounded-full bg-secondary group-hover:bg-flag-green/20 transition-colors">
@@ -75,7 +115,7 @@ export default function History() {
                   <span className="text-[10px] font-bold">WORKED</span>
                 </button>
                 <button 
-                  onClick={() => completeIntervention('Partial')}
+                  onClick={() => completeMutation.mutate({ id: activeIntervention.id, result: 'Partial' })}
                    className="p-4 rounded-2xl border border-border/50 hover:border-flag-yellow hover:bg-flag-yellow/10 hover:text-flag-yellow transition-all flex flex-col items-center gap-2 group bg-card/50"
                 >
                   <div className="p-2 rounded-full bg-secondary group-hover:bg-flag-yellow/20 transition-colors">
@@ -84,7 +124,7 @@ export default function History() {
                    <span className="text-[10px] font-bold">UNCLEAR</span>
                 </button>
                 <button 
-                  onClick={() => completeIntervention('No')}
+                  onClick={() => completeMutation.mutate({ id: activeIntervention.id, result: 'No' })}
                    className="p-4 rounded-2xl border border-border/50 hover:border-flag-red hover:bg-flag-red/10 hover:text-flag-red transition-all flex flex-col items-center gap-2 group bg-card/50"
                 >
                   <div className="p-2 rounded-full bg-secondary group-hover:bg-flag-red/20 transition-colors">
@@ -136,7 +176,7 @@ export default function History() {
             <p className="text-sm text-muted-foreground/50 italic text-center py-8">No completed interventions yet.</p>
           )}
 
-          {pastInterventions.map((int) => (
+          {pastInterventions.map((int: any) => (
             <div key={int.id} className="bg-card border border-border/50 p-5 rounded-2xl flex justify-between items-center group hover:border-border transition-colors">
               <div>
                 <p className="font-bold text-sm mb-1 group-hover:text-white transition-colors">{int.text}</p>

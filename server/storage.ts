@@ -105,7 +105,7 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(dailyLogs).where(eq(dailyLogs.userId, userId));
     
     if (startDate && endDate) {
-      query = query.where(
+      query = db.select().from(dailyLogs).where(
         and(
           eq(dailyLogs.userId, userId),
           gte(dailyLogs.date, startDate),

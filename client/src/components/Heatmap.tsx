@@ -1,5 +1,8 @@
-import React from 'react';
-import { Flag, DailyLog } from '@/lib/store';
+import React, { useEffect, useState } from 'react';
+import type { DailyLog } from '@shared/schema';
+import { RotateCcw } from 'lucide-react';
+
+type Flag = 'GREEN' | 'YELLOW' | 'RED';
 
 const HeatmapCell = ({ flag }: { flag: Flag }) => {
   const color = 
@@ -43,12 +46,15 @@ export default function Heatmap({ logs }: HeatmapProps) {
            {/* We need to map metrics to rows */}
            {['sleep', 'rhr', 'hrv', 'protein', 'gut', 'sun', 'exercise', 'symptomScore'].map((metric) => (
              <React.Fragment key={metric}>
-               {logs.slice(-14).map((log, i) => (
-                 <HeatmapCell 
-                  key={i} 
-                  flag={log.processedState[metric as keyof typeof log.processedState] || 'GREEN'} 
-                 />
-               ))}
+               {logs.slice(-14).map((log, i) => {
+                 const flagKey = `${metric}Flag` as keyof typeof log;
+                 return (
+                   <HeatmapCell 
+                    key={i} 
+                    flag={(log[flagKey] as Flag) || 'GREEN'} 
+                   />
+                 );
+               })}
              </React.Fragment>
            ))}
          </div>

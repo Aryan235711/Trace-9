@@ -1,18 +1,39 @@
 import React from 'react';
-import { useStore, Flag } from '@/lib/store';
 import { useLocation } from 'wouter';
 import { format } from 'date-fns';
 import { ChevronLeft, Save, Moon, Activity, Heart, Sun, Dumbbell, Utensils, Smile } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
+
+type Flag = 'GREEN' | 'YELLOW' | 'RED';
 
 export default function DailyLog() {
-  const { addLog, targets } = useStore();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
+
+  const addLogMutation = useMutation({
+    mutationFn: async (logData: any) => {
+      const response = await fetch('/api/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(logData)
+      });
+      if (!response.ok) throw new Error('Failed to add log');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['logs'] });
+      navigate('/');
+    }
+  });
   const [, setLocation] = useLocation();
 
   const [formData, setFormData] = React.useState({
     sleep: 7.0,
     rhr: 60,
     hrv: 50,
-    protein: targets.protein,
+    protein: 150,
     gut: 4,
     sun: 3,
     exercise: 2,
@@ -23,32 +44,35 @@ export default function DailyLog() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Quick mock flagging logic (matches spec basically)
-    const getFlag = (val: number, target: number, isLowerBetter = false): Flag => {
-        const ratio = val / target;
-        // Simplified for prototype
-        if (ratio >= 0.9) return 'GREEN';
-        if (ratio >= 0.8) return 'YELLOW';
-        return 'RED';
+    const getFlag = (val: number, target: number): Flag => {
+      const ratio = val / target;
+      if (ratio >= 0.9) return 'GREEN';
+      if (ratio >= 0.8) return 'YELLOW';
+      return 'RED';
     };
 
-    addLog({
+    const logData = {
       date: format(new Date(), 'yyyy-MM-dd'),
-      rawValues: formData,
-      processedState: {
-        sleep: getFlag(formData.sleep, 7.5),
-        rhr: getFlag(60, formData.rhr), // RHR lower is better generally but for spec logic using placeholder
-        hrv: getFlag(formData.hrv, 50),
-        protein: getFlag(formData.protein, targets.protein),
-        gut: formData.gut >= 4 ? 'GREEN' : formData.gut === 3 ? 'YELLOW' : 'RED',
-        sun: formData.sun === 5 ? 'GREEN' : formData.sun === 3 ? 'YELLOW' : 'RED',
-        exercise: formData.exercise >= 4 ? 'GREEN' : formData.exercise >= 2 ? 'YELLOW' : 'RED',
-        symptomScore: formData.symptomScore <= 2 ? 'GREEN' : formData.symptomScore === 3 ? 'YELLOW' : 'RED',
-        symptomName: 'GREEN'
-      }
-    });
+      sleep: formData.sleep,
+      rhr: formData.rhr,
+      hrv: formData.hrv,
+      protein: formData.protein,
+      gut: formData.gut,
+      sun: formData.sun,
+      exercise: formData.exercise,
+      symptomScore: formData.symptomScore,
+      symptomName: formData.symptomName,
+      sleepFlag: getFlag(formData.sleep, 7.5),
+      rhrFlag: formData.rhr <= 65 ? 'GREEN' : formData.rhr <= 75 ? 'YELLOW' : 'RED',
+      hrvFlag: getFlag(formData.hrv, 50),
+      proteinFlag: getFlag(formData.protein, 150),
+      gutFlag: formData.gut >= 4 ? 'GREEN' : formData.gut === 3 ? 'YELLOW' : 'RED',
+      sunFlag: formData.sun === 5 ? 'GREEN' : formData.sun === 3 ? 'YELLOW' : 'RED',
+      exerciseFlag: formData.exercise >= 4 ? 'GREEN' : formData.exercise >= 2 ? 'YELLOW' : 'RED',
+      symptomFlag: formData.symptomScore <= 2 ? 'GREEN' : formData.symptomScore === 3 ? 'YELLOW' : 'RED'
+    };
 
-    setLocation('/');
+    addLogMutation.mutate(logData);
   };
 
   const InputSection = ({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) => (
@@ -64,7 +88,7 @@ export default function DailyLog() {
   return (
     <div className="p-6 min-h-screen bg-background pb-32">
        <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => setLocation('/')} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+        <button onClick={() => navigate('/')} className="p-2 hover:bg-white/10 rounded-full transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
         <div>

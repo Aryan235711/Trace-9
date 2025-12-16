@@ -257,7 +257,7 @@ export default function Dashboard() {
 
       {/* TRACEBACK HEATMAP (Lazy Loaded) */}
       <Suspense fallback={<HeatmapSkeleton />}>
-        <Heatmap logs={logs} />
+        <Heatmap logs={logs as any} />
       </Suspense>
 
     </div>

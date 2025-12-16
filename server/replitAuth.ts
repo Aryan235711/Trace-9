@@ -68,6 +68,8 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  const debugAuth = process.env.DEBUG_AUTH === "1";
+
   const config = await getOidcConfig();
 
   const verify: VerifyFunction = async (
@@ -98,6 +100,13 @@ export async function setupAuth(app: Express) {
       );
       passport.use(strategy);
       registeredStrategies.add(strategyName);
+      if (debugAuth) {
+        console.debug(
+          "[auth-debug] registered strategy",
+          strategyName,
+          `callbackURL=https://${domain}/api/callback`
+        );
+      }
     }
   };
 
@@ -106,6 +115,12 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/login", (req, res, next) => {
     ensureStrategy(req.hostname);
+    if (debugAuth) {
+      console.debug(
+        "[auth-debug] login",
+        { hostname: req.hostname, protocol: req.protocol, url: req.originalUrl }
+      );
+    }
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],

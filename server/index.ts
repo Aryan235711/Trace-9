@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
 import { registerRoutes } from "./routes";
@@ -90,7 +91,7 @@ const initPromise = registerRoutes(httpServer, app)
 if (!process.env.VERCEL) {
   initPromise.then(() => {
     if (!hasInitialized) return;
-    const port = parseInt(process.env.PORT || "5000", 10);
+    const port = parseInt(process.env.PORT || "3000", 10);
     httpServer.listen(port, () => {
       log(`serving on port ${port}`);
     });

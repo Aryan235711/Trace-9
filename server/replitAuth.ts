@@ -77,8 +77,8 @@ export async function setupAuth(app: Express) {
     console.debug(
       "[auth-debug] oidc client info",
       {
-        issuer: config.metadata?.issuer,
-        authorization_endpoint: config.metadata?.authorization_endpoint,
+        issuer: (config as any).metadata?.issuer,
+        authorization_endpoint: (config as any).metadata?.authorization_endpoint,
         clientId: resolvedClientId,
         callback: `https://${domain}/api/callback`,
       },
@@ -129,7 +129,7 @@ export async function setupAuth(app: Express) {
   app.get("/api/login", (req, res, next) => {
     ensureStrategy(req.hostname);
     if (debugAuth) {
-      const authorizeEndpoint = config.metadata?.authorization_endpoint;
+      const authorizeEndpoint = (config as any).metadata?.authorization_endpoint;
       const authorizeUrl = authorizeEndpoint
         ? new URL(authorizeEndpoint)
         : null;

@@ -128,12 +128,16 @@ export async function setupAuth(app: Express) {
   app.get("/api/login", (req, res, next) => {
     ensureStrategy(req.hostname);
     if (debugAuth) {
-      const authorizeUrl = config.authorizationUrl({
-        redirect_uri: `https://${req.hostname}/api/callback`,
-        scope: ["openid", "email", "profile", "offline_access"].join(" "),
-        prompt: "login consent",
-      });
-      console.debug("[auth-debug] built authorize URL", authorizeUrl);
+      const authorizeEndpoint = config?.issuer?.metadata?.authorization_endpoint;
+      const authorizeUrl = authorizeEndpoint
+        ? new URL(authorizeEndpoint)
+        : null;
+      if (authorizeUrl) {
+        authorizeUrl.searchParams.set("redirect_uri", `https://${req.hostname}/api/callback`);
+        authorizeUrl.searchParams.set("scope", ["openid", "email", "profile", "offline_access"].join(" "));
+        authorizeUrl.searchParams.set("prompt", "login consent");
+      }
+      console.debug("[auth-debug] built authorize URL", authorizeUrl?.href ?? "<missing authorization_endpoint>");
       console.debug("[auth-debug] request info", {
         hostname: req.hostname,
         protocol: req.protocol,

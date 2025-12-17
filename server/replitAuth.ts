@@ -72,6 +72,18 @@ export async function setupAuth(app: Express) {
 
   const config = await getOidcConfig();
 
+  const resolvedClientId = process.env.REPL_ID || process.env.GOOGLE_CLIENT_ID;
+  const logClientInfo = (domain: string) => {
+    console.debug(
+      "[auth-debug] oidc client info",
+      {
+        issuer: config.issuer.issuer,
+        clientId: resolvedClientId,
+        callback: `https://${domain}/api/callback`,
+      },
+    );
+  };
+
   const verify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
@@ -116,6 +128,24 @@ export async function setupAuth(app: Express) {
   app.get("/api/login", (req, res, next) => {
     ensureStrategy(req.hostname);
     if (debugAuth) {
+      const authorizeUrl = config.authorizationUrl({
+        redirect_uri: `https://${req.hostname}/api/callback`,
+        scope: ["openid", "email", "profile", "offline_access"].join(" "),
+        prompt: "login consent",
+      });
+      console.debug("[auth-debug] built authorize URL", authorizeUrl);
+      console.debug("[auth-debug] request info", {
+        hostname: req.hostname,
+        protocol: req.protocol,
+        originalUrl: req.originalUrl,
+        headers: {
+          host: req.headers.host,
+          referer: req.headers.referer,
+        },
+      });
+      logClientInfo(req.hostname);
+    }
+    if (debugAuth) {
       console.debug(
         "[auth-debug] login",
         { hostname: req.hostname, protocol: req.protocol, url: req.originalUrl }
@@ -132,7 +162,12 @@ export async function setupAuth(app: Express) {
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
-    })(req, res, next);
+    })(req, res, (err) => {
+      if (err) {
+        console.error("[auth-debug] passport callback error", err);
+        return next(err);
+      }
+    });
   });
 
   app.get("/api/logout", (req, res) => {

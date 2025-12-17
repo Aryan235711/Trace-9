@@ -77,7 +77,7 @@ export async function setupAuth(app: Express) {
     console.debug(
       "[auth-debug] oidc client info",
       {
-        issuer: config.issuer.issuer,
+        issuer: config.issuer,
         clientId: resolvedClientId,
         callback: `https://${domain}/api/callback`,
       },

@@ -10,10 +10,30 @@ import { storage } from "./storage";
 
 const getOidcConfig = memoize(
   async () => {
-    return await client.discovery(
-      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
-    );
+    const issuerUrl = process.env.ISSUER_URL ?? "https://replit.com/oidc";
+    const clientId = process.env.REPL_ID;
+    
+    console.log("[auth-debug] OIDC discovery starting", {
+      issuerUrl,
+      clientId: clientId?.substring(0, 20) + "...",
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET
+    });
+    
+    try {
+      const config = await client.discovery(
+        new URL(issuerUrl),
+        clientId!
+      );
+      console.log("[auth-debug] OIDC discovery success", {
+        hasMetadata: !!(config as any).metadata,
+        issuer: (config as any).metadata?.issuer,
+        authEndpoint: (config as any).metadata?.authorization_endpoint
+      });
+      return config;
+    } catch (error) {
+      console.error("[auth-debug] OIDC discovery FAILED", error);
+      throw error;
+    }
   },
   { maxAge: 3600 * 1000 }
 );
@@ -70,7 +90,16 @@ export async function setupAuth(app: Express) {
 
   const debugAuth = process.env.DEBUG_AUTH === "1";
 
+  console.log("[auth-debug] Environment check", {
+    ISSUER_URL: process.env.ISSUER_URL,
+    REPL_ID: process.env.REPL_ID?.substring(0, 20) + "...",
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID?.substring(0, 20) + "...",
+    hasGoogleSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+    hasSessionSecret: !!process.env.SESSION_SECRET
+  });
+
   const config = await getOidcConfig();
+  console.log("[auth-debug] Config object type:", typeof config, Object.keys(config || {}));
 
   const resolvedClientId = process.env.REPL_ID || process.env.GOOGLE_CLIENT_ID;
   const logClientInfo = (domain: string) => {

@@ -1,6 +1,7 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile, copyFile } from "fs/promises";
+import { createRequire } from "node:module";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -63,6 +64,7 @@ async function buildAll() {
     logLevel: "info",
   });
 
+  const require = createRequire(import.meta.url);
   await copyFile(
     require.resolve("connect-pg-simple/table.sql"),
     "dist/table.sql"

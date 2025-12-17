@@ -10,28 +10,32 @@ import { storage } from "./storage";
 
 const getOidcConfig = memoize(
   async () => {
-    const issuerUrl = process.env.ISSUER_URL ?? "https://replit.com/oidc";
-    const clientId = process.env.REPL_ID;
+    const issuerUrl = process.env.ISSUER_URL ?? "https://accounts.google.com";
+    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.REPL_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     
-    console.log("[auth-debug] OIDC discovery starting", {
+    console.log("[auth-debug] OIDC config starting", {
       issuerUrl,
       clientId: clientId?.substring(0, 20) + "...",
-      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET
+      hasClientSecret: !!clientSecret
     });
     
     try {
+      // Use direct configuration for Google OAuth
       const config = await client.discovery(
         new URL(issuerUrl),
-        clientId!
+        clientId!,
+        clientSecret
       );
-      console.log("[auth-debug] OIDC discovery success", {
-        hasMetadata: !!(config as any).metadata,
-        issuer: (config as any).metadata?.issuer,
-        authEndpoint: (config as any).metadata?.authorization_endpoint
+      
+      console.log("[auth-debug] OIDC config created", {
+        configType: typeof config,
+        hasConfig: !!config
       });
+      
       return config;
     } catch (error) {
-      console.error("[auth-debug] OIDC discovery FAILED", error);
+      console.error("[auth-debug] OIDC config FAILED", error);
       throw error;
     }
   },
@@ -101,7 +105,7 @@ export async function setupAuth(app: Express) {
   const config = await getOidcConfig();
   console.log("[auth-debug] Config object type:", typeof config, Object.keys(config || {}));
 
-  const resolvedClientId = process.env.REPL_ID || process.env.GOOGLE_CLIENT_ID;
+  const resolvedClientId = process.env.GOOGLE_CLIENT_ID || process.env.REPL_ID;
   const logClientInfo = (domain: string) => {
     console.debug(
       "[auth-debug] oidc client info",

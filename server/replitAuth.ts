@@ -77,7 +77,7 @@ export async function setupAuth(app: Express) {
     console.debug(
       "[auth-debug] oidc client info",
       {
-        issuer: config.issuer,
+        issuer: (config as any).issuer,
         clientId: resolvedClientId,
         callback: `https://${domain}/api/callback`,
       },
@@ -128,7 +128,7 @@ export async function setupAuth(app: Express) {
   app.get("/api/login", (req, res, next) => {
     ensureStrategy(req.hostname);
     if (debugAuth) {
-      const authorizeEndpoint = config?.issuer?.metadata?.authorization_endpoint;
+      const authorizeEndpoint = (config as any)?.issuer?.metadata?.authorization_endpoint;
       const authorizeUrl = authorizeEndpoint
         ? new URL(authorizeEndpoint)
         : null;
@@ -166,7 +166,7 @@ export async function setupAuth(app: Express) {
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
-    })(req, res, (err) => {
+    })(req, res, (err: any) => {
       if (err) {
         console.error("[auth-debug] passport callback error", err);
         return next(err);

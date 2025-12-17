@@ -10,18 +10,10 @@ import { storage } from "./storage";
 
 const getOidcConfig = memoize(
   async () => {
-    const issuerUrl = process.env.ISSUER_URL ?? "https://replit.com/oidc";
-    if (!process.env.REPL_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-      throw new Error("Missing REPL_ID or GOOGLE_CLIENT_SECRET");
-    }
-    const issuer = await client.discovery(
-      new URL(issuerUrl),
+    return await client.discovery(
+      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
       process.env.REPL_ID!
     );
-    return new issuer.Client({
-      client_id: process.env.REPL_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-    });
   },
   { maxAge: 3600 * 1000 }
 );
@@ -82,12 +74,11 @@ export async function setupAuth(app: Express) {
 
   const resolvedClientId = process.env.REPL_ID || process.env.GOOGLE_CLIENT_ID;
   const logClientInfo = (domain: string) => {
-    const metadata = config.issuer?.metadata;
     console.debug(
       "[auth-debug] oidc client info",
       {
-        issuer: metadata?.issuer,
-        authorization_endpoint: metadata?.authorization_endpoint,
+        issuer: (config as any).metadata?.issuer,
+        authorization_endpoint: (config as any).metadata?.authorization_endpoint,
         clientId: resolvedClientId,
         callback: `https://${domain}/api/callback`,
       },
@@ -138,7 +129,7 @@ export async function setupAuth(app: Express) {
   app.get("/api/login", (req, res, next) => {
     ensureStrategy(req.hostname);
     if (debugAuth) {
-      const authorizeEndpoint = config.issuer?.metadata?.authorization_endpoint;
+      const authorizeEndpoint = (config as any).metadata?.authorization_endpoint;
       const authorizeUrl = authorizeEndpoint
         ? new URL(authorizeEndpoint)
         : null;

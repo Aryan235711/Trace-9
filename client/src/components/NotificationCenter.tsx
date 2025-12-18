@@ -5,7 +5,7 @@ import { Bell, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { useLogs } from "@/hooks/useLogs";
+import { useLog } from "@/hooks/useLogs";
 import { useActiveIntervention } from "@/hooks/useInterventions";
 import { useStore } from "@/lib/store";
 
@@ -27,7 +27,7 @@ export function NotificationCenter() {
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => toYmd(today), [today]);
 
-  const { log: todayLog, isLoading: todayLogLoading } = useLogs(todayKey, todayKey);
+  const { log: todayLog, isLoading: todayLogLoading } = useLog(todayKey);
   const { activeIntervention } = useActiveIntervention();
 
   const dismissed = useStore((s) => s.dismissedNotificationIds || []);
@@ -38,7 +38,7 @@ export function NotificationCenter() {
     const items: AppNotification[] = [];
 
     // Daily log reminder
-    if (!todayLogLoading && (!todayLog || todayLog.length === 0)) {
+    if (!todayLogLoading && !todayLog) {
       items.push({
         id: `daily-log:${todayKey}`,
         title: "Today's action: complete your Daily Log",

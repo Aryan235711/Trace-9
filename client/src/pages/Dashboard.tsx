@@ -262,10 +262,10 @@ export default function Dashboard() {
                       color: 'white' 
                     }}
                     itemStyle={{ fontSize: '12px' }}
-                    formatter={(value: any, name: string) => [
-                      `${Math.round(value)}%`,
-                      name === 'recovery' ? 'Recovery' : name === 'energy' ? 'Energy' : 'Stress'
-                    ]}
+                    formatter={(value: any, name: string) => {
+                      const displayName = name === 'recovery' ? 'Recovery' : name === 'energy' ? 'Energy' : 'Stress';
+                      return [`${Math.round(value)}%`, displayName];
+                    }}
                   />
                 </RadarChart>
              </ResponsiveContainer>

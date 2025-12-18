@@ -122,7 +122,7 @@ export default function DailyLog() {
                 <input 
                   type="number"
                   value={formData.rhr}
-                  onChange={e => setFormData({...formData, rhr: parseInt(e.target.value)})}
+                  onChange={e => setFormData(prev => ({...prev, rhr: parseInt(e.target.value) || 0}))}
                   className="w-full bg-secondary/50 rounded-xl px-4 py-3 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 />
               </div>
@@ -131,7 +131,7 @@ export default function DailyLog() {
                 <input 
                   type="number"
                   value={formData.hrv}
-                  onChange={e => setFormData({...formData, hrv: parseInt(e.target.value)})}
+                  onChange={e => setFormData(prev => ({...prev, hrv: parseInt(e.target.value) || 0}))}
                   className="w-full bg-secondary/50 rounded-xl px-4 py-3 text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                 />
               </div>
@@ -255,7 +255,7 @@ export default function DailyLog() {
                   type="text"
                   placeholder="e.g. Brain Fog, Joint Pain..."
                   value={formData.symptomName}
-                  onChange={e => setFormData({...formData, symptomName: e.target.value})}
+                  onChange={e => setFormData(prev => ({...prev, symptomName: e.target.value}))}
                   className="w-full bg-secondary border border-transparent rounded-xl px-4 py-4 text-sm focus:border-primary/50 focus:outline-none placeholder:text-muted-foreground/50 transition-all relative z-20"
                />
              </div>

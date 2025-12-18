@@ -39,6 +39,16 @@ export default function Dashboard() {
   const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
   
   const { logs, isLoading: logsLoading } = useLogs(thirtyDaysAgo, today);
+  
+  // Debug: Check if we're getting real data
+  React.useEffect(() => {
+    if (logs && logs.length > 0) {
+      console.log('[Dashboard] Real data loaded:', logs.length, 'logs');
+      console.log('[Dashboard] Latest log:', logs[0]);
+    } else if (!logsLoading) {
+      console.log('[Dashboard] No logs found - showing empty state');
+    }
+  }, [logs, logsLoading]);
   const { targets } = useTargets();
   const { activeIntervention } = useActiveIntervention();
 
@@ -55,6 +65,7 @@ export default function Dashboard() {
       <div className="p-8 text-center font-mono">
         <p className="text-muted-foreground">NO DATA LOGGED</p>
         <p className="text-sm text-muted-foreground mt-2">Go to Daily Log to record your first entry</p>
+        <p className="text-xs text-muted-foreground/50 mt-4">Debug: {logsLoading ? 'Loading...' : 'No data from API'}</p>
       </div>
     );
   }
@@ -91,12 +102,7 @@ export default function Dashboard() {
             {format(new Date(), 'EEEE, MMMM do')}
           </p>
         </div>
-        <div className="bg-card/50 px-3 py-1.5 rounded-full border border-border/50 backdrop-blur-md">
-          <div className="text-xs font-bold text-flag-green flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-flag-green animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-            System Active
-          </div>
-        </div>
+
       </div>
 
       {/* BANNER SYSTEM */}

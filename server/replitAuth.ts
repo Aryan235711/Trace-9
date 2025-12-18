@@ -4,6 +4,7 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { createTablesIfNotExist } from "./createTables";
 
 // Simple Google OAuth configuration
 const getGoogleConfig = () => {
@@ -70,13 +71,27 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Try to create database tables if they don't exist
+  // Auto-create database tables if they don't exist
   try {
     console.log("[auth-debug] Checking database tables...");
     await storage.getUser("test-user-check");
     console.log("[auth-debug] Database tables exist");
   } catch (error) {
-    console.warn("[auth-debug] Database tables missing, this is expected on first deploy");
+    console.log("[auth-debug] Database tables missing, creating them...");
+    try {
+      // Try drizzle-kit first
+      const { execSync } = await import("child_process");
+      execSync("npx drizzle-kit push --force", { stdio: "inherit" });
+      console.log("[auth-debug] Database tables created via drizzle-kit!");
+    } catch (migrationError) {
+      console.log("[auth-debug] Drizzle-kit failed, trying raw SQL...");
+      const success = await createTablesIfNotExist();
+      if (success) {
+        console.log("[auth-debug] Database tables created via raw SQL!");
+      } else {
+        console.log("[auth-debug] All migration methods failed - OAuth will still work");
+      }
+    }
   }
 
   const { clientId, clientSecret } = getGoogleConfig();

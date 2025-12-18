@@ -49,6 +49,8 @@ function updateUserSession(user: any, profile: any, accessToken: string, refresh
   user.access_token = accessToken;
   user.refresh_token = refreshToken;
   user.expires_at = Math.floor(Date.now() / 1000) + 3600; // 1 hour
+  // Add claims object for API route compatibility
+  user.claims = { sub: profile.id };
 }
 
 async function upsertUser(profile: any) {

@@ -69,6 +69,18 @@ async function buildAll() {
     require.resolve("connect-pg-simple/table.sql"),
     "dist/table.sql"
   );
+  
+  // Run database migration in production
+  if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
+    console.log("running database migration...");
+    const { execSync } = await import("child_process");
+    try {
+      execSync("npx drizzle-kit push --force", { stdio: "inherit" });
+      console.log("database migration completed");
+    } catch (error) {
+      console.warn("database migration failed:", error);
+    }
+  }
 }
 
 buildAll().catch((err) => {

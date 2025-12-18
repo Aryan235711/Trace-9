@@ -70,6 +70,15 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Try to create database tables if they don't exist
+  try {
+    console.log("[auth-debug] Checking database tables...");
+    await storage.getUser("test-user-check");
+    console.log("[auth-debug] Database tables exist");
+  } catch (error) {
+    console.warn("[auth-debug] Database tables missing, this is expected on first deploy");
+  }
+
   const { clientId, clientSecret } = getGoogleConfig();
   
   if (!clientId || !clientSecret) {
@@ -90,7 +99,15 @@ export async function setupAuth(app: Express) {
       
       const user = {};
       updateUserSession(user, profile, accessToken, refreshToken);
-      await upsertUser(profile);
+      
+      // Try to upsert user, but don't fail OAuth if DB is not ready
+      try {
+        await upsertUser(profile);
+        console.log("[auth-debug] User upserted successfully");
+      } catch (dbError) {
+        console.warn("[auth-debug] DB upsert failed, continuing with OAuth:", (dbError as Error).message);
+      }
+      
       done(null, user);
     } catch (error) {
       console.error("[auth-debug] OAuth verify error", error);

@@ -1,46 +1,23 @@
-import * as client from "openid-client";
-import { Strategy, type VerifyFunction } from "openid-client/passport";
-
 import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
-import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-const getOidcConfig = memoize(
-  async () => {
-    const issuerUrl = process.env.ISSUER_URL ?? "https://accounts.google.com";
-    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.REPL_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    
-    console.log("[auth-debug] OIDC config starting", {
-      issuerUrl,
-      clientId: clientId?.substring(0, 20) + "...",
-      hasClientSecret: !!clientSecret
-    });
-    
-    try {
-      // Use direct configuration for Google OAuth
-      const config = await client.discovery(
-        new URL(issuerUrl),
-        clientId!,
-        clientSecret
-      );
-      
-      console.log("[auth-debug] OIDC config created", {
-        configType: typeof config,
-        hasConfig: !!config
-      });
-      
-      return config;
-    } catch (error) {
-      console.error("[auth-debug] OIDC config FAILED", error);
-      throw error;
-    }
-  },
-  { maxAge: 3600 * 1000 }
-);
+// Simple Google OAuth configuration
+const getGoogleConfig = () => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  
+  console.log("[auth-debug] Google OAuth config", {
+    hasClientId: !!clientId,
+    hasClientSecret: !!clientSecret,
+    clientId: clientId?.substring(0, 20) + "..."
+  });
+  
+  return { clientId, clientSecret };
+};
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -64,25 +41,26 @@ export function getSession() {
   });
 }
 
-function updateUserSession(
-  user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
-) {
-  user.claims = tokens.claims();
-  user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
+function updateUserSession(user: any, profile: any, accessToken: string, refreshToken?: string) {
+  user.id = profile.id;
+  user.email = profile.emails?.[0]?.value;
+  user.name = profile.displayName;
+  user.access_token = accessToken;
+  user.refresh_token = refreshToken;
+  user.expires_at = Math.floor(Date.now() / 1000) + 3600; // 1 hour
 }
 
-async function upsertUser(
-  claims: any,
-) {
+async function upsertUser(profile: any) {
+  const name = profile.displayName || '';
+  const [firstName, ...lastNameParts] = name.split(' ');
+  const lastName = lastNameParts.join(' ');
+  
   await storage.upsertUser({
-    id: claims["sub"],
-    email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
+    id: profile.id,
+    email: profile.emails?.[0]?.value,
+    firstName: firstName || '',
+    lastName: lastName || '',
+    profileImageUrl: profile.photos?.[0]?.value,
   });
 }
 
@@ -92,159 +70,59 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  const debugAuth = process.env.DEBUG_AUTH === "1";
+  const { clientId, clientSecret } = getGoogleConfig();
+  
+  if (!clientId || !clientSecret) {
+    throw new Error("Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
+  }
 
-  console.log("[auth-debug] Environment check", {
-    ISSUER_URL: process.env.ISSUER_URL,
-    REPL_ID: process.env.REPL_ID?.substring(0, 20) + "...",
-    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID?.substring(0, 20) + "...",
-    hasGoogleSecret: !!process.env.GOOGLE_CLIENT_SECRET,
-    hasSessionSecret: !!process.env.SESSION_SECRET
-  });
-
-  const config = await getOidcConfig();
-  console.log("[auth-debug] Config object type:", typeof config, Object.keys(config || {}));
-
-  const resolvedClientId = process.env.GOOGLE_CLIENT_ID || process.env.REPL_ID;
-  const logClientInfo = (domain: string) => {
-    console.debug(
-      "[auth-debug] oidc client info",
-      {
-        issuer: (config as any).metadata?.issuer,
-        authorization_endpoint: (config as any).metadata?.authorization_endpoint,
-        clientId: resolvedClientId,
-        callback: `https://${domain}/api/callback`,
-      },
-    );
-  };
-
-  const verify: VerifyFunction = async (
-    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
-  ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
-  };
-
-  // Keep track of registered strategies
-  const registeredStrategies = new Set<string>();
-
-  // Helper function to ensure strategy exists for a domain
-  const ensureStrategy = (domain: string) => {
-    const strategyName = `replitauth:${domain}`;
-    if (!registeredStrategies.has(strategyName)) {
-      const strategy = new Strategy(
-        {
-          name: strategyName,
-          config,
-          scope: "openid email profile offline_access",
-          callbackURL: `https://${domain}/api/callback`,
-        },
-        verify,
-      );
-      passport.use(strategy);
-      registeredStrategies.add(strategyName);
-      if (debugAuth) {
-        console.debug(
-          "[auth-debug] registered strategy",
-          strategyName,
-          `callbackURL=https://${domain}/api/callback`
-        );
-      }
+  // Configure Google OAuth Strategy
+  passport.use(new GoogleStrategy({
+    clientID: clientId,
+    clientSecret: clientSecret,
+    callbackURL: "/api/callback"
+  }, async (accessToken: string, refreshToken: string, profile: any, done: any) => {
+    try {
+      console.log("[auth-debug] Google OAuth success", {
+        profileId: profile.id,
+        email: profile.emails?.[0]?.value
+      });
+      
+      const user = {};
+      updateUserSession(user, profile, accessToken, refreshToken);
+      await upsertUser(profile);
+      done(null, user);
+    } catch (error) {
+      console.error("[auth-debug] OAuth verify error", error);
+      done(error, null);
     }
-  };
+  }));
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
-  app.get("/api/login", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    if (debugAuth) {
-      const authorizeEndpoint = (config as any).metadata?.authorization_endpoint;
-      const authorizeUrl = authorizeEndpoint
-        ? new URL(authorizeEndpoint)
-        : null;
-      if (authorizeUrl) {
-        authorizeUrl.searchParams.set("redirect_uri", `https://${req.hostname}/api/callback`);
-        authorizeUrl.searchParams.set("scope", ["openid", "email", "profile", "offline_access"].join(" "));
-        authorizeUrl.searchParams.set("prompt", "login consent");
-      }
-      console.debug("[auth-debug] built authorize URL", authorizeUrl?.href ?? "<missing authorization_endpoint>");
-      console.debug("[auth-debug] request info", {
-        hostname: req.hostname,
-        protocol: req.protocol,
-        originalUrl: req.originalUrl,
-        headers: {
-          host: req.headers.host,
-          referer: req.headers.referer,
-        },
-      });
-      logClientInfo(req.hostname);
-    }
-    if (debugAuth) {
-      console.debug(
-        "[auth-debug] login",
-        { hostname: req.hostname, protocol: req.protocol, url: req.originalUrl }
-      );
-    }
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
-  });
+  app.get("/api/login", passport.authenticate("google", {
+    scope: ["profile", "email"]
+  }));
 
-  app.get("/api/callback", (req, res, next) => {
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
-    })(req, res, (err: any) => {
-      if (err) {
-        console.error("[auth-debug] passport callback error", err);
-        return next(err);
-      }
-    });
-  });
+  app.get("/api/callback", 
+    passport.authenticate("google", { failureRedirect: "/api/login" }),
+    (req, res) => {
+      console.log("[auth-debug] OAuth callback success");
+      res.redirect("/");
+    }
+  );
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+      res.redirect("/");
     });
   });
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
-
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-
-  const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
-    return next();
-  }
-
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+  next();
 };

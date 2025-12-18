@@ -144,15 +144,16 @@ export function useAuth() {
     window.dispatchEvent(new Event('trace:auth:logout'));
   }, [cacheUser]);
 
-  const getAuthHeaders = useCallback(() => {
+  const getAuthHeaders = useCallback((): Record<string, string> | undefined => {
     const token = localStorage.getItem('auth_token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    return token ? { Authorization: `Bearer ${token}` } : undefined;
   }, []);
 
   if (isDev) {
     return {
       user: mockUser,
       loading: false,
+      isLoading: false,
       logout,
       getAuthHeaders,
       refresh: checkAuth,
@@ -163,6 +164,7 @@ export function useAuth() {
   return {
     user,
     loading,
+    isLoading: loading,
     logout,
     getAuthHeaders,
     refresh: checkAuth,

@@ -9,8 +9,9 @@ export function useEntitlements() {
     queryKey: ['entitlements'],
     queryFn: async (): Promise<PlanId> => {
       try {
+        const headers = getAuthHeaders();
         const response = await fetch('/api/billing/plan', {
-          headers: getAuthHeaders(),
+          headers,
         });
         if (!response.ok) return 'free';
         const data = await response.json();

@@ -41,12 +41,14 @@ export default function Upgrade() {
     setLoading(true);
     setMessage(null);
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(getAuthHeaders() ?? {}),
+      };
+
       const res = await fetch('/api/billing/upgrade', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
+        headers,
       });
 
       if (!res.ok) throw new Error('Upgrade failed');
@@ -65,12 +67,14 @@ export default function Upgrade() {
     setDowngrading(true);
     setMessage(null);
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(getAuthHeaders() ?? {}),
+      };
+
       const res = await fetch('/api/billing/downgrade', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
+        headers,
       });
       if (!res.ok) throw new Error('Downgrade failed');
       const data = await res.json();

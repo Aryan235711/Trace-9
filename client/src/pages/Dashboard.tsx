@@ -82,13 +82,32 @@ export default function Dashboard() {
     symptom: log.symptomScore
   }));
 
-  const radarData = [
-    { subject: 'Sleep', A: Number(((latestLog.sleep / 9) * 100).toFixed(0)), fullMark: 100 },
-    { subject: 'Protein', A: Number(((latestLog.protein / (targets?.proteinTarget || 100)) * 100).toFixed(0)), fullMark: 100 },
-    { subject: 'Gut', A: Number(((latestLog.gut / 5) * 100).toFixed(0)), fullMark: 100 },
-    { subject: 'Sun', A: Number(((latestLog.sun / 5) * 100).toFixed(0)), fullMark: 100 },
-    { subject: 'Exer', A: Number(((latestLog.exercise / 5) * 100).toFixed(0)), fullMark: 100 },
-    { subject: 'HRV', A: Number(((latestLog.hrv / 100) * 100).toFixed(0)), fullMark: 100 },
+  // Circadian Rhythm Analysis - 4 key phases
+  const circadianData = [
+    {
+      phase: 'Morning\nRecovery',
+      recovery: Number(((latestLog.sleep / 9) * 100).toFixed(0)), // Sleep quality
+      energy: Number(((latestLog.protein / (targets?.proteinTarget || 150)) * 100).toFixed(0)), // Nutrition
+      stress: Math.max(0, 100 - (latestLog.symptomScore * 20)), // Inverted symptoms
+    },
+    {
+      phase: 'Daytime\nActivity',
+      recovery: Number(((latestLog.hrv / 100) * 100).toFixed(0)), // HRV recovery
+      energy: Number(((latestLog.exercise / 5) * 100).toFixed(0)), // Exercise output
+      stress: Math.max(0, 100 - ((latestLog.rhr - 50) * 2)), // RHR stress (lower is better)
+    },
+    {
+      phase: 'Evening\nWind-down',
+      recovery: Number(((latestLog.gut / 5) * 100).toFixed(0)), // Gut health
+      energy: Number(((latestLog.sun / 5) * 100).toFixed(0)), // Sun exposure
+      stress: Math.max(0, 100 - (latestLog.symptomScore * 20)), // Symptom load
+    },
+    {
+      phase: 'Night\nRest',
+      recovery: Number((((9 - Math.abs(latestLog.sleep - 8)) / 9) * 100).toFixed(0)), // Sleep optimization
+      energy: Number(((latestLog.protein / (targets?.proteinTarget || 150)) * 100).toFixed(0)), // Protein recovery
+      stress: Math.max(0, 100 - ((latestLog.rhr - 50) * 2)), // Resting state
+    },
   ];
 
   return (
@@ -189,30 +208,64 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* CHART 2: Biometric Balance (Radar) */}
-        <div className="h-96 w-full bg-card/40 rounded-3xl border border-border/50 p-6 shadow-sm backdrop-blur-sm relative overflow-hidden flex-col">
+        {/* CHART 2: Circadian Rhythm Analysis (Polar) */}
+        <div className="h-96 w-full bg-card/40 rounded-3xl border border-border/50 p-6 shadow-sm backdrop-blur-sm relative overflow-hidden flex flex-col">
           <div className="flex justify-between items-center mb-2">
              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-               <Zap size={16} className="text-green-400" /> System Balance
+               <Zap size={16} className="text-purple-400" /> Circadian Rhythm
              </h2>
           </div>
           <div className="flex-1 min-h-0">
              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                  <PolarGrid stroke="rgba(255,255,255,0.2)" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#d1d5db', fontSize: 12, fontWeight: 700 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                <RadarChart cx="50%" cy="50%" outerRadius="75%" data={circadianData}>
+                  <PolarGrid stroke="rgba(255,255,255,0.15)" gridType="polygon" />
+                  <PolarAngleAxis 
+                    dataKey="phase" 
+                    tick={{ fill: '#a855f7', fontSize: 11, fontWeight: 600 }} 
+                    className="text-purple-400"
+                  />
+                  <PolarRadiusAxis 
+                    angle={0} 
+                    domain={[0, 100]} 
+                    tick={false} 
+                    axisLine={false} 
+                  />
                   <Radar
-                    name="Performance"
-                    dataKey="A"
-                    stroke="#4ade80"
-                    strokeWidth={3}
-                    fill="#4ade80"
-                    fillOpacity={0.5}
+                    name="Recovery"
+                    dataKey="recovery"
+                    stroke="#22c55e"
+                    strokeWidth={2}
+                    fill="#22c55e"
+                    fillOpacity={0.2}
+                  />
+                  <Radar
+                    name="Energy"
+                    dataKey="energy"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    fill="#f59e0b"
+                    fillOpacity={0.2}
+                  />
+                  <Radar
+                    name="Stress"
+                    dataKey="stress"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    fill="#ef4444"
+                    fillOpacity={0.2}
                   />
                   <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', background: 'rgba(10,10,10,0.95)', color: 'white' }}
+                    contentStyle={{ 
+                      borderRadius: '12px', 
+                      border: '1px solid hsl(var(--border))', 
+                      background: 'rgba(10,10,10,0.95)', 
+                      color: 'white' 
+                    }}
                     itemStyle={{ fontSize: '12px' }}
+                    formatter={(value: any, name: string) => [
+                      `${Math.round(value)}%`,
+                      name === 'recovery' ? 'Recovery' : name === 'energy' ? 'Energy' : 'Stress'
+                    ]}
                   />
                 </RadarChart>
              </ResponsiveContainer>

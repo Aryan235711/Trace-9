@@ -2,6 +2,8 @@ import React from 'react';
 import { useLocation, Link } from 'wouter';
 import { LayoutDashboard, Plus, History, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { NotificationCenter } from '@/components/NotificationCenter';
+import { UserMenu } from '@/components/UserMenu';
 
 export function BottomNav() {
   const [location] = useLocation();
@@ -51,7 +53,19 @@ export function BottomNav() {
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-white/20 selection:text-white">
-      <main className="flex-1 pb-24 max-w-md mx-auto w-full relative">
+      {/* Header with notifications and user menu */}
+      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-md mx-auto flex h-14 items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">Trace-9</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <NotificationCenter />
+            <UserMenu />
+          </div>
+        </div>
+      </header>
+      <main className="flex-1 pb-24 pt-4 max-w-md mx-auto w-full relative">
         {children}
       </main>
       <BottomNav />
